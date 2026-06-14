@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SynMark — Análisis sintáctico</title>
+<title>Sintaxgram — Análisis sintáctico</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -89,7 +89,7 @@ textarea {
 </head>
 <body>
 <header>
-  <h1>SynMark</h1>
+  <h1>Sintaxgram</h1>
   <span>Análisis sintáctico — sintaxismark v0.6.20</span>
 </header>
 <div class="app">
@@ -166,7 +166,7 @@ textarea {
     <button class="ghost" onclick="toggleTagForm()">Cancelar</button>
   </div>
   <div class="editor-area">
-    <textarea id="src" rows="3" spellcheck="false" placeholder="Ej: SES{N{Juan}} PVS{construyó OD*{MD{una} N{casa}}}">SES{N{Juan}} PVS{construyó OD*{MD{una} N{casa}}}</textarea>
+    <textarea id="src" rows="3" spellcheck="false" placeholder="Ej: SES{N{Juan}} PVS{N{analiza} OD*{MD{una} N{oración}}}">SES{N{Juan}} PVS{N{analiza} OD*{MD{una} N{oración}}}</textarea>
   </div>
   <div id="err" class="err" style="display:none"></div>
   <div class="preview" id="preview"></div>
@@ -185,7 +185,7 @@ textarea {
   </div>
 </div>
 <footer class="appfooter">
-  <span>SynMark &amp; sintaxismark — Pablo Zdrojewski, © <span id="year"></span>.
+  <span>Sintaxgram &amp; sintaxismark — Pablo Zdrojewski, © <span id="year"></span>.
     Código: <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT</a> ·
     Paquete LaTeX: <a href="https://www.latex-project.org/lppl/lppl-1-3c/" target="_blank" rel="noopener">LPPL 1.3c</a> ·
     Diagramas/documentación: <a href="https://creativecommons.org/licenses/by/4.0/deed.es" target="_blank" rel="noopener">CC BY 4.0</a>
@@ -223,7 +223,7 @@ const CMDS = {
 };
 
 // ── Etiquetas personalizadas ────────────────────────────────────────────────
-const CUSTOM_KEY = 'synmark_custom_tags_v1';
+const CUSTOM_KEY = 'sintaxgram_custom_tags_v1';
 let CUSTOM_TAGS = [];
 
 // Agrega un comando definido por el usuario a la tabla CMDS (motor de render)
@@ -326,7 +326,7 @@ function addCustomTag() {
 function exportTags() {
   const a = document.createElement('a');
   a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(CUSTOM_TAGS, null, 2));
-  a.download = 'synmark-etiquetas.json'; a.click();
+  a.download = 'sintaxgram-etiquetas.json'; a.click();
 }
 
 function importTags(ev) {
