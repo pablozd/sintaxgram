@@ -1,6 +1,6 @@
-# STXgrama
+# Sintaxgram
 
-**STXgrama** es una herramienta web simple para generar diagramas de análisis sintáctico a partir de una notación textual compacta.
+**Sintaxgram** es una herramienta web simple para generar diagramas de análisis sintáctico a partir de una notación textual compacta.
 
 Está pensada para uso docente en gramática, sintaxis y análisis de oraciones. Permite escribir una oración anotada con funciones sintácticas y obtener automáticamente una visualización con etiquetas, subrayados, cajas abiertas y líneas superiores.
 
