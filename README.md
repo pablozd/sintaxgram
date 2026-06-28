@@ -10,6 +10,10 @@
 
 Está pensada para uso docente en gramática, sintaxis y análisis de oraciones. Permite escribir una oración anotada con funciones sintácticas y obtener automáticamente una visualización con etiquetas, subrayados, cajas abiertas y líneas superiores.
 
+<p align="center">
+  <img src="docs/sintaxgram-preview.svg" alt="Captura de Sintaxgram" width="980">
+</p>
+
 ## Características
 
 - Interfaz web en un único archivo HTML.
