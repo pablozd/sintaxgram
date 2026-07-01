@@ -1,1110 +1,1446 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sintaxgram — Análisis sintáctico</title>
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sintaxgram — Análisis sintáctico</title>
+  <link rel="icon" href="img/favicon.png" type="image/png">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-/* ── Navbar de marca (zdro.) ── */
-.zdro-navbar {
-  background-color: #0f6cbf;
-  padding: 0.5rem 1rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,.2);
-  display: flex;
-  align-items: center;
-}
-.zdro-navbar a {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-weight: 400;
-  color: #fff;
-  letter-spacing: .5px;
-  font-size: 1.2rem;
-  text-decoration: none;
-}
-.zdro-navbar a:hover { color: #fff; opacity: 0.9; }
+    /* ── Navbar de marca ── */
+    .zdro-navbar {
+      background-color: #0f6cbf;
+      padding: 0.5rem 1rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, .2);
+      display: flex;
+      align-items: center;
+    }
 
-:root {
-  --bg: #ffffff; --bg2: #f5f5f5; --fg: #1a1a1a; --fg2: #666;
-  --border: #ddd; --border2: #ccc;
-  --blue: #4a90d9; --orange: #6c757d;
-  --font-mono: 'Courier New', monospace;
-  --font-sans: system-ui, sans-serif;
-  --font-serif: Georgia, 'Times New Roman', serif;
-}
-body { font-family: var(--font-sans); background: var(--bg); color: var(--fg); min-height: 100vh; display: flex; flex-direction: column; }
-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
-header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.02em; }
-header span { font-size: 12px; color: var(--fg2); }
-.app { display: flex; flex-direction: column; flex: 1; }
-.toolbar { display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; background: var(--bg2); }
-.toolbar span.lbl { font-size: 12px; color: var(--fg2); margin-right: 2px; white-space: nowrap; }
-.sep { width: 1px; height: 16px; background: var(--border); margin: 0 4px; }
-.chip { font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border2); background: var(--bg); color: var(--fg2); cursor: pointer; font-family: var(--font-mono); white-space: nowrap; transition: all 0.12s; }
-.chip:hover { background: var(--fg); color: var(--bg); border-color: var(--fg); }
-.chip.above { background: var(--blue); border-color: var(--blue); color: #fff; }
-.chip.above:hover { background: #357abd; border-color: #357abd; color: #fff; }
-.chip.below { background: var(--orange); border-color: var(--orange); color: #fff; }
-.chip.below:hover { background: #565e64; border-color: #565e64; color: #fff; }
-.editor-area { display: flex; flex-direction: column; }
-.fmt-bar {
-  display: flex; align-items: center; gap: 4px; padding: 5px 10px;
-  background: var(--bg2); border-bottom: 1px solid var(--border);
-}
-.fmt-label {
-  font-size: 10px; font-weight: 600; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--fg2);
-  margin-right: 6px; white-space: nowrap;
-}
-.fmt-btn {
-  min-width: 26px; padding: 2px 7px; border-radius: 3px; font-size: 12px;
-  text-align: center; cursor: pointer; color: var(--fg);
-  border: 1px solid var(--border2); background: var(--bg);
-  font-family: var(--font-sans); transition: all 0.1s; user-select: none;
-}
-.fmt-btn:hover { background: var(--fg); color: var(--bg); border-color: var(--fg); }
-textarea {
-  width: 100%; border: none; outline: none;
-  padding: 14px 16px; font-family: var(--font-mono); font-size: 14px;
-  background: var(--bg2); color: var(--fg);
-  border-bottom: 1px solid var(--border); resize: vertical; min-height: 70px;
-}
-.preview {
-  background: var(--bg); padding: 36px 24px;
-  display: flex; align-items: flex-start; justify-content: center;
-  min-height: 200px; overflow-x: auto; flex: 1;
-}
-.preview svg { max-width: none; display: block; }
-.actions { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--bg2); flex-wrap: wrap; }
-.actions button {
-  padding: 6px 14px; font-size: 13px; border-radius: 5px;
-  border: 1px solid var(--border2); background: var(--bg); color: var(--fg);
-  cursor: pointer; transition: all 0.12s;
-}
-.actions button:hover { background: var(--fg); color: var(--bg); }
-.err { font-size: 12px; color: #c0392b; padding: 6px 16px; background: #fef0f0; border-bottom: 1px solid #f5c6cb; }
-.hint { font-size: 11px; color: var(--fg2); padding: 6px 16px 10px; line-height: 1.6; border-top: 1px solid var(--border); }
+    .zdro-navbar a {
+      display: inline-flex;
+      align-items: center;
+      text-decoration: none;
+    }
 
-/* ── Drawer de notación ── */
-.hint-box { border-top: 1px solid var(--border); background: var(--bg2); }
-.hint-box summary {
-  cursor: pointer; padding: 6px 16px; font-size: 12px; font-weight: 600;
-  color: var(--fg2); list-style: none; user-select: none;
-}
-.hint-box summary::-webkit-details-marker { display: none; }
-.hint-box summary:hover { color: var(--fg); }
-.hint-box summary::before { content: "▸ "; }
-.hint-box[open] summary::before { content: "▾ "; }
-.hint-content {
-  padding: 8px 16px 12px; font-size: 11px; color: var(--fg2);
-  line-height: 1.8; border-top: 1px solid var(--border);
-}
-.hint-content code { font-size: 10.5px; background: var(--bg); padding: 1px 4px; border-radius: 3px; border: 1px solid var(--border2); }
+    .zdro-navbar img {
+      max-height: 32px;
+      display: block;
+    }
 
-/* ── Configuración ── */
-.config-content { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-.config-content label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg2); white-space: nowrap; }
-.config-content input[type="range"] { width: 120px; cursor: pointer; }
-.config-content select { font-size: 12px; padding: 3px 6px; border-radius: 4px; border: 1px solid var(--border2); background: var(--bg); color: var(--fg); }
+    .zdro-navbar a:hover {
+      opacity: 0.9;
+    }
 
-/* ── Color pickers ── */
-.color-picker-wrap { display: flex; flex-direction: column; gap: 4px; }
-.color-picker-wrap label { font-size: 12px; color: var(--fg2); white-space: nowrap; }
-.color-picker-row { display: flex; align-items: center; gap: 4px; }
-.color-swatch { width: 18px; height: 18px; border-radius: 3px; border: 1.5px solid var(--border2); cursor: pointer; flex-shrink: 0; transition: transform 0.1s; }
-.color-swatch:hover { transform: scale(1.15); border-color: var(--fg); }
-.color-swatch.active { border-color: var(--fg); box-shadow: 0 0 0 2px var(--fg); }
-.color-native { width: 22px; height: 22px; border: none; padding: 0; background: none; cursor: pointer; border-radius: 3px; overflow: hidden; }
-.color-native::-webkit-color-swatch-wrapper { padding: 0; }
-.color-native::-webkit-color-swatch { border: 1.5px solid var(--border2); border-radius: 3px; }
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f5f5;
+      --fg: #1a1a1a;
+      --fg2: #666;
+      --border: #ddd;
+      --border2: #ccc;
+      --blue: #4a90d9;
+      --orange: #6c757d;
+      --font-mono: 'Courier New', monospace;
+      --font-sans: system-ui, sans-serif;
+      --font-serif: Georgia, 'Times New Roman', serif;
+    }
 
-/* ── Etiquetas personalizadas ── */
-.custom-row { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; background: var(--bg2); }
-.custom-row span.lbl { font-size: 12px; color: var(--fg2); margin-right: 2px; white-space: nowrap; }
-.chip.custom { position: relative; padding-right: 18px; }
-.chip .del { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); font-weight: bold; opacity: 0.55; line-height: 1; }
-.chip .del:hover { opacity: 1; color: #c0392b; }
-.addtag-btn { font-size: 11px; padding: 3px 10px; border-radius: 4px; border: 1px dashed var(--border2); background: transparent; color: var(--fg2); cursor: pointer; white-space: nowrap; transition: all 0.12s; }
-.addtag-btn:hover { border-color: var(--fg); color: var(--fg); }
-.tagform { display: none; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg2); }
-.tagform.open { display: flex; }
-.tagform input[type="text"], .tagform select {
-  font-size: 12px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border2);
-  background: var(--bg); color: var(--fg); font-family: var(--font-sans);
-}
-.tagform label { font-size: 12px; color: var(--fg2); display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
-.tagform button { font-size: 12px; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border2); background: var(--bg); color: var(--fg); cursor: pointer; transition: all 0.12s; }
-.tagform button:hover { background: var(--fg); color: var(--bg); }
-.tagform button.ghost { background: transparent; border-style: dashed; }
-.tagform button.ghost:hover { background: var(--bg2); color: var(--fg); }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
-/* ── Footer: autoría / licencias ── */
-.appfooter {
-  display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between;
-  gap: 6px 16px; padding: 8px 16px; border-top: 1px solid var(--border);
-  background: var(--bg2); font-size: 11px; color: var(--fg2); line-height: 1.6;
-}
-.appfooter a { color: var(--fg2); text-decoration: none; border-bottom: 1px dotted var(--border2); }
-.appfooter a:hover { color: var(--fg); border-color: var(--fg); }
-.appfooter .dl-pkg { white-space: nowrap; font-weight: 600; }
+    header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
-/* ── Insertar en otra página (embed) ── */
-.embed-box { border-top: 1px solid var(--border); background: var(--bg2); }
-.embed-box summary {
-  cursor: pointer; padding: 8px 16px; font-size: 12px; color: var(--fg2);
-  list-style: none; user-select: none;
-}
-.embed-box summary::-webkit-details-marker { display: none; }
-.embed-box summary:hover { color: var(--fg); }
-.embed-box summary::before { content: "▸ "; }
-.embed-box[open] summary::before { content: "▾ "; }
-.embed-content { padding: 0 16px 12px; }
-.embed-content textarea {
-  width: 100%; box-sizing: border-box; font-family: var(--font-mono, monospace);
-  font-size: 11px; padding: 8px; border-radius: 4px; border: 1px solid var(--border2);
-  background: var(--bg); color: var(--fg); resize: vertical;
-}
-.embed-content .embed-actions { margin: 6px 0; display: flex; align-items: center; gap: 8px; }
-.embed-content button {
-  font-size: 12px; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border2);
-  background: var(--bg); color: var(--fg); cursor: pointer; transition: all 0.12s;
-}
-.embed-content button:hover { background: var(--fg); color: var(--bg); }
-.embed-content .copied { font-size: 11px; color: #2a8f4f; opacity: 0; transition: opacity 0.2s; }
-.embed-content .copied.show { opacity: 1; }
-.embed-note { font-size: 11px; color: var(--fg2); line-height: 1.6; margin: 8px 0 0; }
-.embed-note b { color: var(--fg); }
-</style>
+    header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    header span {
+      font-size: 12px;
+      color: var(--fg2);
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      background: var(--bg2);
+    }
+
+    .toolbar span.lbl {
+      font-size: 12px;
+      color: var(--fg2);
+      margin-right: 2px;
+      white-space: nowrap;
+    }
+
+    .sep {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      margin: 0 4px;
+    }
+
+    .chip {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border2);
+      background: var(--bg);
+      color: var(--fg2);
+      cursor: pointer;
+      font-family: var(--font-mono);
+      white-space: nowrap;
+      transition: all 0.12s;
+    }
+
+    .chip:hover {
+      background: var(--fg);
+      color: var(--bg);
+      border-color: var(--fg);
+    }
+
+    .chip.above {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+
+    .chip.above:hover {
+      background: #357abd;
+      border-color: #357abd;
+      color: #fff;
+    }
+
+    .chip.below {
+      background: var(--orange);
+      border-color: var(--orange);
+      color: #fff;
+    }
+
+    .chip.below:hover {
+      background: #565e64;
+      border-color: #565e64;
+      color: #fff;
+    }
+
+    .editor-area {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .fmt-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .fmt-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--fg2);
+      margin-right: 6px;
+      white-space: nowrap;
+    }
+
+    .fmt-btn {
+      min-width: 26px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 12px;
+      text-align: center;
+      cursor: pointer;
+      color: var(--fg);
+      border: 1px solid var(--border2);
+      background: var(--bg);
+      font-family: var(--font-sans);
+      transition: all 0.1s;
+      user-select: none;
+    }
+
+    .fmt-btn:hover {
+      background: var(--fg);
+      color: var(--bg);
+      border-color: var(--fg);
+    }
+
+    textarea {
+      width: 100%;
+      border: none;
+      outline: none;
+      padding: 14px 16px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      background: var(--bg2);
+      color: var(--fg);
+      border-bottom: 1px solid var(--border);
+      resize: vertical;
+      min-height: 70px;
+    }
+
+    .preview {
+      background: var(--bg);
+      padding: 36px 24px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      min-height: 200px;
+      overflow-x: auto;
+      flex: 1;
+    }
+
+    .preview svg {
+      max-width: none;
+      display: block;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg2);
+      flex-wrap: wrap;
+    }
+
+    .actions button {
+      padding: 6px 14px;
+      font-size: 13px;
+      border-radius: 5px;
+      border: 1px solid var(--border2);
+      background: var(--bg);
+      color: var(--fg);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .actions button:hover {
+      background: var(--fg);
+      color: var(--bg);
+    }
+
+    .err {
+      font-size: 12px;
+      color: #c0392b;
+      padding: 6px 16px;
+      background: #fef0f0;
+      border-bottom: 1px solid #f5c6cb;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--fg2);
+      padding: 6px 16px 10px;
+      line-height: 1.6;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Drawer de notación ── */
+    .hint-box {
+      border-top: 1px solid var(--border);
+      background: var(--bg2);
+    }
+
+    .hint-box summary {
+      cursor: pointer;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--fg2);
+      list-style: none;
+      user-select: none;
+    }
+
+    .hint-box summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .hint-box summary:hover {
+      color: var(--fg);
+    }
+
+    .hint-box summary::before {
+      content: "▸ ";
+    }
+
+    .hint-box[open] summary::before {
+      content: "▾ ";
+    }
+
+    .hint-content {
+      padding: 8px 16px 12px;
+      font-size: 11px;
+      color: var(--fg2);
+      line-height: 1.8;
+      border-top: 1px solid var(--border);
+    }
+
+    .hint-content code {
+      font-size: 10.5px;
+      background: var(--bg);
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid var(--border2);
+    }
+
+    /* ── Configuración ── */
+    .config-content {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .config-content label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--fg2);
+      white-space: nowrap;
+    }
+
+    .config-content input[type="range"] {
+      width: 120px;
+      cursor: pointer;
+    }
+
+    .config-content select {
+      font-size: 12px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border2);
+      background: var(--bg);
+      color: var(--fg);
+    }
+
+    /* ── Etiquetas personalizadas ── */
+    .custom-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      background: var(--bg2);
+    }
+
+    .custom-row span.lbl {
+      font-size: 12px;
+      color: var(--fg2);
+      margin-right: 2px;
+      white-space: nowrap;
+    }
+
+    .chip.custom {
+      position: relative;
+      padding-right: 18px;
+    }
+
+    .chip .del {
+      position: absolute;
+      right: 3px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-weight: bold;
+      opacity: 0.55;
+      line-height: 1;
+    }
+
+    .chip .del:hover {
+      opacity: 1;
+      color: #c0392b;
+    }
+
+    .addtag-btn {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      border: 1px dashed var(--border2);
+      background: transparent;
+      color: var(--fg2);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.12s;
+    }
+
+    .addtag-btn:hover {
+      border-color: var(--fg);
+      color: var(--fg);
+    }
+
+    .tagform {
+      display: none;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+    }
+
+    .tagform.open {
+      display: flex;
+    }
+
+    .tagform input[type="text"],
+    .tagform select {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border2);
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-sans);
+    }
+
+    .tagform label {
+      font-size: 12px;
+      color: var(--fg2);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .tagform button {
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border2);
+      background: var(--bg);
+      color: var(--fg);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .tagform button:hover {
+      background: var(--fg);
+      color: var(--bg);
+    }
+
+    .tagform button.ghost {
+      background: transparent;
+      border-style: dashed;
+    }
+
+    .tagform button.ghost:hover {
+      background: var(--bg2);
+      color: var(--fg);
+    }
+
+    /* ── Footer: autoría / licencias ── */
+    .appfooter {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 6px 16px;
+      padding: 8px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg2);
+      font-size: 11px;
+      color: var(--fg2);
+      line-height: 1.6;
+    }
+
+    .appfooter a {
+      color: var(--fg2);
+      text-decoration: none;
+      border-bottom: 1px dotted var(--border2);
+    }
+
+    .appfooter a:hover {
+      color: var(--fg);
+      border-color: var(--fg);
+    }
+
+    .appfooter .dl-pkg {
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    /* ── Insertar en otra página (embed) ── */
+    .embed-box {
+      border-top: 1px solid var(--border);
+      background: var(--bg2);
+    }
+
+    .embed-box summary {
+      cursor: pointer;
+      padding: 8px 16px;
+      font-size: 12px;
+      color: var(--fg2);
+      list-style: none;
+      user-select: none;
+    }
+
+    .embed-box summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .embed-box summary:hover {
+      color: var(--fg);
+    }
+
+    .embed-box summary::before {
+      content: "▸ ";
+    }
+
+    .embed-box[open] summary::before {
+      content: "▾ ";
+    }
+
+    .embed-content {
+      padding: 0 16px 12px;
+    }
+
+    .embed-content textarea {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: var(--font-mono, monospace);
+      font-size: 11px;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border2);
+      background: var(--bg);
+      color: var(--fg);
+      resize: vertical;
+    }
+
+    .embed-content .embed-actions {
+      margin: 6px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .embed-content button {
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border2);
+      background: var(--bg);
+      color: var(--fg);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .embed-content button:hover {
+      background: var(--fg);
+      color: var(--bg);
+    }
+
+    .embed-content .copied {
+      font-size: 11px;
+      color: #2a8f4f;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .embed-content .copied.show {
+      opacity: 1;
+    }
+
+    .embed-note {
+      font-size: 11px;
+      color: var(--fg2);
+      line-height: 1.6;
+      margin: 8px 0 0;
+    }
+
+    .embed-note b {
+      color: var(--fg);
+    }
+  </style>
 </head>
+
 <body>
-<nav class="zdro-navbar">
-  <a href="https://pablozd.ar/">zdro.</a>
-</nav>
-<header>
-  <h1>Sintaxgram</h1>
-  <span>Análisis sintáctico — sintaxismark v0.6.20</span>
-</header>
-<div class="app">
-  <div class="toolbar">
-    <span class="lbl">Arriba:</span>
-    <span class="chip above" onclick="ins('SES{…}')" title="SES — Sujeto Expreso Simple">SES</span>
-    <span class="chip above" onclick="ins('SEC{…}')" title="SEC — Sujeto Expreso Compuesto">SEC</span>
-    <span class="chip above" onclick="ins('ST{…}')" title="ST — Sujeto Tácito">ST</span>
-    <span class="chip above" onclick="ins('PVS{…}')" title="PVS — Predicado Verbal Simple">PVS</span>
-    <span class="chip above" onclick="ins('PVC{…}')" title="PVC — Predicado Verbal Compuesto">PVC</span>
-    <span class="chip above" onclick="ins('S{…}')" title="S — Sujeto">S</span>
-    <span class="chip above" onclick="ins('P{…}')" title="P — Predicado">P</span>
-    <div class="sep"></div>
-    <span class="lbl">Caja:</span>
-    <span class="chip below" onclick="ins('OD*{…}')" title="OD — Objeto Directo (caja)">OD*</span>
-    <span class="chip below" onclick="ins('OI*{…}')" title="OI — Objeto Indirecto (caja)">OI*</span>
-    <span class="chip below" onclick="ins('MI*{…}')" title="MI — Modificador Indirecto (caja)">MI*</span>
-    <span class="chip below" onclick="ins('CCL*{…}')" title="CCL — Complemento Circunstancial de Lugar (caja)">CCL*</span>
-    <span class="chip below" onclick="ins('COMP*{…}')" title="COMP — Complemento (caja)">COMP*</span>
-    <span class="chip below" onclick="ins('MD*{…}')" title="MD — Modificador Directo (caja)">MD*</span>
-    <span class="chip below" onclick="ins('CAg*{…}')" title="CAg — Complemento Agente (caja)">CAg*</span>
-    <span class="chip below" onclick="ins('CREG*{…}')" title="CREG — Complemento de Régimen (caja)">CREG*</span>
-    <span class="chip below" onclick="ins('CSim*{…}')" title="CSim — Complemento Similar (caja)">CSim*</span>
-    <span class="chip below" onclick="ins('CL*{…}')" title="CL — Cláusula (caja)">CL*</span>
-    <span class="chip below" onclick="ins('CM*{…}')" title="CM — Complemento Modal (caja)">CM*</span>
-    <span class="chip below" onclick="ins('PSO*{…}')" title="PSO — Predicado Secundario Orientado al objeto (caja)">PSO*</span>
-    <span class="chip below" onclick="ins('PSNO*{…}')" title="PSNO — Predicado Secundario No Orientado (caja)">PSNO*</span>
-    <span class="chip below" onclick="ins('POO*{…}')" title="POO — Predicado Orientado al Objeto (caja)">POO*</span>
-    <span class="chip below" onclick="ins('PONO*{…}')" title="PONO — Predicado Orientado No Obligatorio (caja)">PONO*</span>
-    <span class="chip below" onclick="ins('ACT*{…}')" title="ACT — Adjunto Circunstancial de Tiempo (caja)">ACT*</span>
-    <span class="chip below" onclick="ins('ACL*{…}')" title="ACL — Adjunto Circunstancial de Lugar (caja)">ACL*</span>
-    <span class="chip below" onclick="ins('ACM*{…}')" title="ACM — Adjunto Circunstancial de Modo (caja)">ACM*</span>
-    <span class="chip below" onclick="ins('ACF*{…}')" title="ACF — Adjunto Circunstancial de Frecuencia (caja)">ACF*</span>
-    <span class="chip below" onclick="ins('ACC*{…}')" title="ACC — Adjunto Circunstancial de Causa (caja)">ACC*</span>
-    <span class="chip below" onclick="ins('ACCant*{…}')" title="ACCant — Adjunto Circunstancial Antepuesto (caja)">ACCant*</span>
-    <span class="chip below" onclick="ins('ACI*{…}')" title="ACI — Adjunto Circunstancial de Instrumento (caja)">ACI*</span>
-    <span class="chip below" onclick="ins('ACFin*{…}')" title="ACFin — Adjunto Circunstancial de Finalidad (caja)">ACFin*</span>
-    <span class="chip below" onclick="ins('MG*{…}')" title="MG — Modificador de Grado (caja)">MG*</span>
-    <span class="chip below" onclick="ins('Ap*{…}')" title="Ap — Aposición (caja)">Ap*</span>
-    <div class="sep"></div>
-    <span class="lbl">Etiq:</span>
-    <span class="chip" onclick="ins('N{…}')" title="N — Núcleo">N</span>
-    <span class="chip" onclick="ins('NN{…}')" title="NN — Núcleo Nominal">NN</span>
-    <span class="chip" onclick="ins('NV{…}')" title="NV — Núcleo Verbal">NV</span>
-    <span class="chip" onclick="ins('NP{…}')" title="NP — Núcleo del SP">NP</span>
-    <span class="chip" onclick="ins('NA{…}')" title="NA — Núcleo del SA">NA</span>
-    <span class="chip" onclick="ins('NAD{…}')" title="NAD — Núcleo del SAdv">NAD</span>
-    <span class="chip" onclick="ins('MD{…}')" title="MD — Modificador Directo">MD</span>
-    <span class="chip" onclick="ins('MI{…}')" title="MI — Modificador Indirecto">MI</span>
-    <span class="chip" onclick="ins('OD{…}')" title="OD — Objeto Directo (etiqueta + subrayado)">OD</span>
-    <span class="chip" onclick="ins('OI{…}')" title="OI — Objeto Indirecto (etiqueta + subrayado)">OI</span>
-    <span class="chip" onclick="ins('CCL{…}')" title="CCL — Complemento Circunstancial de Lugar">CCL</span>
-    <span class="chip" onclick="ins('COMP{…}')" title="COMP — Complemento">COMP</span>
-    <span class="chip" onclick="ins('CAg{…}')" title="CAg — Complemento Agente">CAg</span>
-    <span class="chip" onclick="ins('CREG{…}')" title="CREG — Complemento de Régimen">CREG</span>
-    <span class="chip" onclick="ins('CSim{…}')" title="CSim — Complemento Similar">CSim</span>
-    <span class="chip" onclick="ins('CL{…}')" title="CL — Cláusula">CL</span>
-    <span class="chip" onclick="ins('CM{…}')" title="CM — Complemento Modal">CM</span>
-    <span class="chip" onclick="ins('PSO{…}')" title="PSO — Predicado Secundario Orientado al objeto">PSO</span>
-    <span class="chip" onclick="ins('PSNO{…}')" title="PSNO — Predicado Secundario No Orientado">PSNO</span>
-    <span class="chip" onclick="ins('POO{…}')" title="POO — Predicado Orientado al Objeto">POO</span>
-    <span class="chip" onclick="ins('PONO{…}')" title="PONO — Predicado Orientado No Obligatorio">PONO</span>
-    <span class="chip" onclick="ins('MG{…}')" title="MG — Modificador de Grado">MG</span>
-    <span class="chip" onclick="ins('Ap{…}')" title="Ap — Aposición">Ap</span>
-    <span class="chip" onclick="ins('MF{…}')" title="MF — Modificador de Frase">MF</span>
-    <span class="chip" onclick="ins('ACT{…}')" title="ACT — Adjunto Circunstancial de Tiempo">ACT</span>
-    <span class="chip" onclick="ins('ACL{…}')" title="ACL — Adjunto Circunstancial de Lugar">ACL</span>
-    <span class="chip" onclick="ins('ACM{…}')" title="ACM — Adjunto Circunstancial de Modo">ACM</span>
-    <span class="chip" onclick="ins('ACF{…}')" title="ACF — Adjunto Circunstancial de Frecuencia">ACF</span>
-    <span class="chip" onclick="ins('ACC{…}')" title="ACC — Adjunto Circunstancial de Causa">ACC</span>
-    <span class="chip" onclick="ins('ACCant{…}')" title="ACCant — Adjunto Circunstancial Antepuesto">ACCant</span>
-    <span class="chip" onclick="ins('ACI{…}')" title="ACI — Adjunto Circunstancial de Instrumento">ACI</span>
-    <span class="chip" onclick="ins('ACFin{…}')" title="ACFin — Adjunto Circunstancial de Finalidad">ACFin</span>
-    <span class="chip" onclick="ins('IPCR{…}')" title="IPCR — Inciso Parentético o Correferencial">IPCR</span>
-    <span class="chip" onclick="ins('Incl{…}')" title="Incl — Incluyente">Incl</span>
-    <div class="sep"></div>
-    <span class="lbl">Esp.:</span>
-    <span class="chip" onclick="ins('\\;')" title="Espacio adicional entre palabras">\;</span>
-    <span class="chip" onclick="ins('\\0')" title="Elemento nulo ∅">\0</span>
-    <span class="chip" onclick="insIndex('^')" title="Superíndice — envuelve la selección o inserta ^{…}">x<sup>a</sup></span>
-    <span class="chip" onclick="insIndex('_')" title="Subíndice — envuelve la selección o inserta _{…}">x<sub>a</sub></span>
-    <span class="chip" onclick="insST()" title="Sujeto tácito — inserta ^{ST …}[ con cursor sobre los rasgos">^{ST}[</span>
-    <span class="chip" onclick="ins(']^{OB}')" title="Objeto Bajo — cierre de constituyente con superíndice OB">]^{OB}</span>
-    <span class="chip" onclick="ins(']^{OU}')" title="Objeto Usado — cierre de constituyente con superíndice OU">]^{OU}</span>
-  </div>
-  <div class="custom-row" id="customRow">
-    <span class="lbl">Personalizadas:</span>
-    <span id="customChips"></span>
-    <span class="addtag-btn" onclick="toggleTagForm()">+ nueva etiqueta</span>
-    <span class="addtag-btn" onclick="exportTags()">↓ exportar</span>
-    <span class="addtag-btn" onclick="document.getElementById('importFile').click()">↑ importar</span>
-    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importTags(event)">
-  </div>
-  <div class="tagform" id="tagForm">
-    <input type="text" id="ctName" placeholder="Comando (ej: FOC)" maxlength="20">
-    <input type="text" id="ctLabel" placeholder="Etiqueta (ej: foco)" maxlength="30">
-    <select id="ctKind" onchange="onKindChange()">
-      <option value="tagbelow">Etiqueta abajo</option>
-      <option value="openbox">Caja abajo</option>
-      <option value="spanline">Línea arriba</option>
-    </select>
-    <label id="ctUlWrap"><input type="checkbox" id="ctUl"> subrayado</label>
-    <label id="ctPairWrap"><input type="checkbox" id="ctPair"> + variante en caja (NOMBRE*)</label>
-    <select id="ctMod" title="Modificador de extremos por defecto">
-      <option value="">patas normales</option>
-      <option value="r">flecha derecha (r)</option>
-      <option value="l">flecha izquierda (l)</option>
-      <option value="rl">flechas ambos lados (rl)</option>
-      <option value="nr">sin pata derecha (nr)</option>
-      <option value="nl">sin pata izquierda (nl)</option>
-      <option value="ne">sin patas (ne)</option>
-    </select>
-    <button onclick="addCustomTag()">Agregar</button>
-    <button class="ghost" onclick="toggleTagForm()">Cancelar</button>
-  </div>
-  <div class="editor-area">
-    <div class="fmt-bar">
-      <span class="fmt-label">Formato inline</span>
-      <span class="fmt-btn" onclick="insFmt('b')" title="Negrita \b{…}"><b>N</b></span>
-      <span class="fmt-btn" onclick="insFmt('i')" title="Itálica \i{…}"><i>I</i></span>
-      <span class="fmt-btn" onclick="insFmt('u')" title="Subrayado \u{…}" style="text-decoration:underline">S</span>
-      <span class="fmt-btn" onclick="insFmt('s')" title="Tachado \s{…}" style="text-decoration:line-through">T</span>
+  <nav class="zdro-navbar">
+    <a href="https://pablozd.ar/">
+      <img src="img/logo-nuevo1.png" alt="logo-nuevo1">
+    </a>
+  </nav>
+  <header>
+    <h1>Sintaxgram</h1>
+    <span>Análisis sintáctico — sintaxismark v0.6.20</span>
+  </header>
+  <div class="app">
+    <div class="toolbar">
+      <span class="lbl">Arriba:</span>
+      <span class="chip above" onclick="ins('SES{…}')" title="SES — Sujeto Expreso Simple">SES</span>
+      <span class="chip above" onclick="ins('SEC{…}')" title="SEC — Sujeto Expreso Compuesto">SEC</span>
+      <span class="chip above" onclick="ins('ST{…}')" title="ST — Sujeto Tácito">ST</span>
+      <span class="chip above" onclick="ins('PVS{…}')" title="PVS — Predicado Verbal Simple">PVS</span>
+      <span class="chip above" onclick="ins('PVC{…}')" title="PVC — Predicado Verbal Compuesto">PVC</span>
+      <span class="chip above" onclick="ins('S{…}')" title="S — Sujeto">S</span>
+      <span class="chip above" onclick="ins('P{…}')" title="P — Predicado">P</span>
+      <div class="sep"></div>
+      <span class="lbl">Caja:</span>
+      <span class="chip below" onclick="ins('OD*{…}')" title="OD — Objeto Directo (caja)">OD*</span>
+      <span class="chip below" onclick="ins('OI*{…}')" title="OI — Objeto Indirecto (caja)">OI*</span>
+      <span class="chip below" onclick="ins('MI*{…}')" title="MI — Modificador Indirecto (caja)">MI*</span>
+      <span class="chip below" onclick="ins('CCL*{…}')"
+        title="CCL — Complemento Circunstancial de Lugar (caja)">CCL*</span>
+      <span class="chip below" onclick="ins('COMP*{…}')" title="COMP — Complemento (caja)">COMP*</span>
+      <span class="chip below" onclick="ins('MD*{…}')" title="MD — Modificador Directo (caja)">MD*</span>
+      <span class="chip below" onclick="ins('CAg*{…}')" title="CAg — Complemento Agente (caja)">CAg*</span>
+      <span class="chip below" onclick="ins('CREG*{…}')" title="CREG — Complemento de Régimen (caja)">CREG*</span>
+      <span class="chip below" onclick="ins('CSim*{…}')" title="CSim — Complemento Similar (caja)">CSim*</span>
+      <span class="chip below" onclick="ins('CL*{…}')" title="CL — Cláusula (caja)">CL*</span>
+      <span class="chip below" onclick="ins('CM*{…}')" title="CM — Complemento Modal (caja)">CM*</span>
+      <span class="chip below" onclick="ins('PSO*{…}')"
+        title="PSO — Predicado Secundario Orientado al objeto (caja)">PSO*</span>
+      <span class="chip below" onclick="ins('PSNO*{…}')"
+        title="PSNO — Predicado Secundario No Orientado (caja)">PSNO*</span>
+      <span class="chip below" onclick="ins('POO*{…}')" title="POO — Predicado Orientado al Objeto (caja)">POO*</span>
+      <span class="chip below" onclick="ins('PONO*{…}')"
+        title="PONO — Predicado Orientado No Obligatorio (caja)">PONO*</span>
+      <span class="chip below" onclick="ins('ACT*{…}')"
+        title="ACT — Adjunto Circunstancial de Tiempo (caja)">ACT*</span>
+      <span class="chip below" onclick="ins('ACL*{…}')" title="ACL — Adjunto Circunstancial de Lugar (caja)">ACL*</span>
+      <span class="chip below" onclick="ins('ACM*{…}')" title="ACM — Adjunto Circunstancial de Modo (caja)">ACM*</span>
+      <span class="chip below" onclick="ins('ACF*{…}')"
+        title="ACF — Adjunto Circunstancial de Frecuencia (caja)">ACF*</span>
+      <span class="chip below" onclick="ins('ACC*{…}')" title="ACC — Adjunto Circunstancial de Causa (caja)">ACC*</span>
+      <span class="chip below" onclick="ins('ACCant*{…}')"
+        title="ACCant — Adjunto Circunstancial Antepuesto (caja)">ACCant*</span>
+      <span class="chip below" onclick="ins('ACI*{…}')"
+        title="ACI — Adjunto Circunstancial de Instrumento (caja)">ACI*</span>
+      <span class="chip below" onclick="ins('ACFin*{…}')"
+        title="ACFin — Adjunto Circunstancial de Finalidad (caja)">ACFin*</span>
+      <span class="chip below" onclick="ins('MG*{…}')" title="MG — Modificador de Grado (caja)">MG*</span>
+      <span class="chip below" onclick="ins('Ap*{…}')" title="Ap — Aposición (caja)">Ap*</span>
+      <div class="sep"></div>
+      <span class="lbl">Etiq:</span>
+      <span class="chip" onclick="ins('N{…}')" title="N — Núcleo">N</span>
+      <span class="chip" onclick="ins('NN{…}')" title="NN — Núcleo Nominal">NN</span>
+      <span class="chip" onclick="ins('NV{…}')" title="NV — Núcleo Verbal">NV</span>
+      <span class="chip" onclick="ins('NP{…}')" title="NP — Núcleo del SP">NP</span>
+      <span class="chip" onclick="ins('NA{…}')" title="NA — Núcleo del SA">NA</span>
+      <span class="chip" onclick="ins('NAD{…}')" title="NAD — Núcleo del SAdv">NAD</span>
+      <span class="chip" onclick="ins('MD{…}')" title="MD — Modificador Directo">MD</span>
+      <span class="chip" onclick="ins('MI{…}')" title="MI — Modificador Indirecto">MI</span>
+      <span class="chip" onclick="ins('OD{…}')" title="OD — Objeto Directo (etiqueta + subrayado)">OD</span>
+      <span class="chip" onclick="ins('OI{…}')" title="OI — Objeto Indirecto (etiqueta + subrayado)">OI</span>
+      <span class="chip" onclick="ins('CCL{…}')" title="CCL — Complemento Circunstancial de Lugar">CCL</span>
+      <span class="chip" onclick="ins('COMP{…}')" title="COMP — Complemento">COMP</span>
+      <span class="chip" onclick="ins('CAg{…}')" title="CAg — Complemento Agente">CAg</span>
+      <span class="chip" onclick="ins('CREG{…}')" title="CREG — Complemento de Régimen">CREG</span>
+      <span class="chip" onclick="ins('CSim{…}')" title="CSim — Complemento Similar">CSim</span>
+      <span class="chip" onclick="ins('CL{…}')" title="CL — Cláusula">CL</span>
+      <span class="chip" onclick="ins('CM{…}')" title="CM — Complemento Modal">CM</span>
+      <span class="chip" onclick="ins('PSO{…}')" title="PSO — Predicado Secundario Orientado al objeto">PSO</span>
+      <span class="chip" onclick="ins('PSNO{…}')" title="PSNO — Predicado Secundario No Orientado">PSNO</span>
+      <span class="chip" onclick="ins('POO{…}')" title="POO — Predicado Orientado al Objeto">POO</span>
+      <span class="chip" onclick="ins('PONO{…}')" title="PONO — Predicado Orientado No Obligatorio">PONO</span>
+      <span class="chip" onclick="ins('MG{…}')" title="MG — Modificador de Grado">MG</span>
+      <span class="chip" onclick="ins('Ap{…}')" title="Ap — Aposición">Ap</span>
+      <span class="chip" onclick="ins('MF{…}')" title="MF — Modificador de Frase">MF</span>
+      <span class="chip" onclick="ins('ACT{…}')" title="ACT — Adjunto Circunstancial de Tiempo">ACT</span>
+      <span class="chip" onclick="ins('ACL{…}')" title="ACL — Adjunto Circunstancial de Lugar">ACL</span>
+      <span class="chip" onclick="ins('ACM{…}')" title="ACM — Adjunto Circunstancial de Modo">ACM</span>
+      <span class="chip" onclick="ins('ACF{…}')" title="ACF — Adjunto Circunstancial de Frecuencia">ACF</span>
+      <span class="chip" onclick="ins('ACC{…}')" title="ACC — Adjunto Circunstancial de Causa">ACC</span>
+      <span class="chip" onclick="ins('ACCant{…}')" title="ACCant — Adjunto Circunstancial Antepuesto">ACCant</span>
+      <span class="chip" onclick="ins('ACI{…}')" title="ACI — Adjunto Circunstancial de Instrumento">ACI</span>
+      <span class="chip" onclick="ins('ACFin{…}')" title="ACFin — Adjunto Circunstancial de Finalidad">ACFin</span>
+      <span class="chip" onclick="ins('IPCR{…}')" title="IPCR — Inciso Parentético o Correferencial">IPCR</span>
+      <span class="chip" onclick="ins('Incl{…}')" title="Incl — Incluyente">Incl</span>
+      <div class="sep"></div>
+      <span class="lbl">Esp.:</span>
+      <span class="chip" onclick="ins('\\;')" title="Espacio adicional entre palabras">\;</span>
+      <span class="chip" onclick="ins('\\0')" title="Elemento nulo ∅">\0</span>
+      <span class="chip" onclick="insIndex('^')"
+        title="Superíndice — envuelve la selección o inserta ^{…}">x<sup>a</sup></span>
+      <span class="chip" onclick="insIndex('_')"
+        title="Subíndice — envuelve la selección o inserta _{…}">x<sub>a</sub></span>
+      <span class="chip" onclick="insST()"
+        title="Sujeto tácito — inserta ^{ST …}[ con cursor sobre los rasgos">^{ST}[</span>
+      <span class="chip" onclick="ins(']^{OB}')"
+        title="Objeto Bajo — cierre de constituyente con superíndice OB">]^{OB}</span>
+      <span class="chip" onclick="ins(']^{OU}')"
+        title="Objeto Usado — cierre de constituyente con superíndice OU">]^{OU}</span>
     </div>
-    <textarea id="src" rows="3" spellcheck="false" placeholder="Ej: [ SES{N{Juan}} PVS{N{analiza} OD*{MD{una} N{oración}}} ]">[ SES{N{Juan}} PVS{N{analiza} OD*{MD{una} N{oración}}} ]</textarea>
-  </div>
-  <div id="err" class="err" style="display:none"></div>
-  <div class="preview" id="preview"></div>
-  <div class="actions">
-    <button onclick="dlSVG()">↓ Descargar SVG</button>
-    <button onclick="dlPNG()">↓ Descargar PNG</button>
-    <button onclick="copySVG()">Copiar SVG</button>
-  </div>
-  <details class="hint-box" id="configBox">
-    <summary>Configuración</summary>
-    <div class="hint-content config-content">
-      <label>Tamaño de fuente:
-        <input type="range" id="cfgSize" min="8" max="24" step="1" value="16"
-          oninput="FONT_SIZE=+this.value; document.getElementById('cfgSizeVal').textContent=this.value+'pt'; _measureCache.clear(); update()">
-        <span id="cfgSizeVal">16pt</span>
-      </label>
-      <label>Familia tipográfica:
-        <select id="cfgFont" onchange="FONT_FAMILY=this.value; _measureCache.clear(); update()">
-          <option value="serif">Serif (Georgia)</option>
-          <option value="sans">Sans serif</option>
-        </select>
-      </label>
-      <div class="color-picker-wrap">
-        <label>Color del texto:</label>
-        <div class="color-picker-row" id="textColorRow"></div>
+    <div class="custom-row" id="customRow">
+      <span class="lbl">Personalizadas:</span>
+      <span id="customChips"></span>
+      <span class="addtag-btn" onclick="toggleTagForm()">+ nueva etiqueta</span>
+      <span class="addtag-btn" onclick="exportTags()">↓ exportar</span>
+      <span class="addtag-btn" onclick="document.getElementById('importFile').click()">↑ importar</span>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importTags(event)">
+    </div>
+    <div class="tagform" id="tagForm">
+      <input type="text" id="ctName" placeholder="Comando (ej: FOC)" maxlength="20">
+      <input type="text" id="ctLabel" placeholder="Etiqueta (ej: foco)" maxlength="30">
+      <select id="ctKind" onchange="onKindChange()">
+        <option value="tagbelow">Etiqueta abajo</option>
+        <option value="openbox">Caja abajo</option>
+        <option value="spanline">Línea arriba</option>
+      </select>
+      <label id="ctUlWrap"><input type="checkbox" id="ctUl"> subrayado</label>
+      <label id="ctPairWrap"><input type="checkbox" id="ctPair"> + variante en caja (NOMBRE*)</label>
+      <select id="ctMod" title="Modificador de extremos por defecto">
+        <option value="">patas normales</option>
+        <option value="r">flecha derecha (r)</option>
+        <option value="l">flecha izquierda (l)</option>
+        <option value="rl">flechas ambos lados (rl)</option>
+        <option value="nr">sin pata derecha (nr)</option>
+        <option value="nl">sin pata izquierda (nl)</option>
+        <option value="ne">sin patas (ne)</option>
+      </select>
+      <button onclick="addCustomTag()">Agregar</button>
+      <button class="ghost" onclick="toggleTagForm()">Cancelar</button>
+    </div>
+    <div class="editor-area">
+      <div class="fmt-bar">
+        <span class="fmt-label">Formato inline</span>
+        <span class="fmt-btn" onclick="insFmt('b')" title="Negrita \b{…}"><b>N</b></span>
+        <span class="fmt-btn" onclick="insFmt('i')" title="Itálica \i{…}"><i>I</i></span>
+        <span class="fmt-btn" onclick="insFmt('u')" title="Subrayado \u{…}" style="text-decoration:underline">S</span>
+        <span class="fmt-btn" onclick="insFmt('s')" title="Tachado \s{…}" style="text-decoration:line-through">T</span>
       </div>
-      <div class="color-picker-wrap">
-        <label>Color de líneas y etiquetas:</label>
-        <div class="color-picker-row" id="lineColorRow"></div>
+      <textarea id="src" rows="3" spellcheck="false"
+        placeholder="Ej: [ SES{N{Juan}} PVS{N{analiza} OD*{MD{una} N{oración}}} ]">[ SES{N{Juan}} PVS{N{analiza} OD*{MD{una} N{oración}}} ]</textarea>
+    </div>
+    <div id="err" class="err" style="display:none"></div>
+    <div class="preview" id="preview"></div>
+    <div class="actions">
+      <button onclick="dlSVG()">↓ Descargar SVG</button>
+      <button onclick="dlPNG()">↓ Descargar PNG</button>
+      <button onclick="copySVG()">Copiar SVG</button>
+    </div>
+    <details class="hint-box" id="configBox">
+      <summary>Configuración</summary>
+      <div class="hint-content config-content">
+        <label>Tamaño de fuente:
+          <input type="range" id="cfgSize" min="8" max="24" step="1" value="16"
+            oninput="FONT_SIZE=+this.value; document.getElementById('cfgSizeVal').textContent=this.value+'pt'; _measureCache.clear(); update()">
+          <span id="cfgSizeVal">16pt</span>
+        </label>
+        <label>Familia tipográfica:
+          <select id="cfgFont" onchange="FONT_FAMILY=this.value; _measureCache.clear(); update()">
+            <option value="serif">Serif (Georgia)</option>
+            <option value="sans">Sans serif</option>
+          </select>
+        </label>
       </div>
-    </div>
-  </details>
-  <details class="hint-box">
-    <summary>Notación y referencia rápida</summary>
-    <div class="hint-content">
-      <strong>Comandos básicos</strong><br>
-      <code>CMD{…}</code> = etiqueta debajo (tagbelow) &nbsp;|&nbsp;
-      <code>CMD*{…}</code> = caja con línea abajo (openbox) &nbsp;|&nbsp;
-      <code>CMD{…}</code> con <em>Arriba</em> = línea arriba (spanline)<br>
-      Anidable: <code>SES{N{Juan}} PVS{NV{compró} OD*{MD{una} N{casa}}}</code><br>
-      <code>OD</code> y <code>OI</code> sin asterisco llevan subrayado automático.<br>
-      <code>\;</code> inserta un espacio en blanco adicional (ej: <code>una \; \; casa</code>)<br>
-      <code>\0</code> inserta el símbolo de elemento nulo ∅ (ej: <code>N{\0}</code>)<br>
-      <code>[ … ]</code> corchetes literales: se renderizan como texto en el diagrama.<br>
-      <br>
-      <strong>Superíndices y subíndices</strong><br>
-      <code>palabra^{texto}</code> = superíndice pegado a la derecha de la palabra<br>
-      <code>palabra_{texto}</code> = subíndice pegado a la derecha de la palabra<br>
-      <code>^{texto}</code> = superíndice flotante (sin base), ej: antes de un corchete<br>
-      <code>_{texto}</code> = subíndice flotante (sin base)<br>
-      Ejemplos: <code>^{ST 1sg}[</code> · <code>]^{OB}</code> · <code>Juan^{i}</code> · <code>N{t^{i}}</code><br>
-      <br>
-      <strong>Modificadores de extremos</strong> — se escriben <em>pegados</em> al nombre del comando, antes de <code>{</code>:<br>
-      <code>CMD(r){…}</code> = flecha en extremo derecho, sin pata derecha<br>
-      <code>CMD(l){…}</code> = flecha en extremo izquierdo, sin pata izquierda<br>
-      <code>CMD(rl){…}</code> = flechas en ambos extremos<br>
-      <code>CMD(nr){…}</code> = sin pata derecha (sin flecha)<br>
-      <code>CMD(nl){…}</code> = sin pata izquierda (sin flecha)<br>
-      <code>CMD(ne){…}</code> = línea sin patas (<em>no ends</em>)<br>
-      Funciona con spanline y openbox. Ej: <code>SES(r){Juan} SES(l){llegó tarde}</code><br>
-      <br>
-      <strong>Etiquetas personalizadas</strong><br>
-      Con <em>+ nueva etiqueta</em> podés definir tus propios comandos. Quedan guardados en este navegador; exportalos/importalos para respaldarlos o compartirlos con colegas.
-      <br><br>
-      <strong>Color individual</strong><br>
-      <code>CMD[color]{…}</code> = aplica un color específico a esa línea/etiqueta.<br>
-      Aceptá nombres en español (<code>rojo</code>, <code>azul</code>, <code>verde</code>…), inglés (<code>red</code>, <code>blue</code>, <code>green</code>…) o hex (<code>#2563EB</code>).<br>
-      Ej: <code>SES[rojo]{Juan} PVS[#2563EB]{analiza}</code>
-    </div>
-  </details>
-</div>
-<details class="embed-box">
-  <summary>Insertar en tu página</summary>
-  <div class="embed-content">
-    <textarea id="embedCode" rows="6" readonly onclick="this.select()">&lt;iframe
+    </details>
+    <details class="hint-box">
+      <summary>Notación y referencia rápida</summary>
+      <div class="hint-content">
+        <strong>Comandos básicos</strong><br>
+        <code>CMD{…}</code> = etiqueta debajo (tagbelow) &nbsp;|&nbsp;
+        <code>CMD*{…}</code> = caja con línea abajo (openbox) &nbsp;|&nbsp;
+        <code>CMD{…}</code> con <em>Arriba</em> = línea arriba (spanline)<br>
+        Anidable: <code>SES{N{Juan}} PVS{NV{compró} OD*{MD{una} N{casa}}}</code><br>
+        <code>OD</code> y <code>OI</code> sin asterisco llevan subrayado automático.<br>
+        <code>\;</code> inserta un espacio en blanco adicional (ej: <code>una \; \; casa</code>)<br>
+        <code>\0</code> inserta el símbolo de elemento nulo ∅ (ej: <code>N{\0}</code>)<br>
+        <code>[ … ]</code> corchetes literales: se renderizan como texto en el diagrama.<br>
+        <br>
+        <strong>Superíndices y subíndices</strong><br>
+        <code>palabra^{texto}</code> = superíndice pegado a la derecha de la palabra<br>
+        <code>palabra_{texto}</code> = subíndice pegado a la derecha de la palabra<br>
+        <code>^{texto}</code> = superíndice flotante (sin base), ej: antes de un corchete<br>
+        <code>_{texto}</code> = subíndice flotante (sin base)<br>
+        Ejemplos: <code>^{ST 1sg}[</code> · <code>]^{OB}</code> · <code>Juan^{i}</code> · <code>N{t^{i}}</code><br>
+        <br>
+        <strong>Modificadores de extremos</strong> — se escriben <em>pegados</em> al nombre del comando, antes de
+        <code>{</code>:<br>
+        <code>CMD(r){…}</code> = flecha en extremo derecho, sin pata derecha<br>
+        <code>CMD(l){…}</code> = flecha en extremo izquierdo, sin pata izquierda<br>
+        <code>CMD(rl){…}</code> = flechas en ambos extremos<br>
+        <code>CMD(nr){…}</code> = sin pata derecha (sin flecha)<br>
+        <code>CMD(nl){…}</code> = sin pata izquierda (sin flecha)<br>
+        <code>CMD(ne){…}</code> = línea sin patas (<em>no ends</em>)<br>
+        Funciona con spanline y openbox. Ej: <code>SES(r){Juan} SES(l){llegó tarde}</code><br>
+        <br>
+        <strong>Etiquetas personalizadas</strong><br>
+        Con <em>+ nueva etiqueta</em> podés definir tus propios comandos. Quedan guardados en este navegador;
+        exportalos/importalos para respaldarlos o compartirlos con colegas.
+      </div>
+    </details>
+  </div>
+  <details class="embed-box">
+    <summary>Insertar en tu página</summary>
+    <div class="embed-content">
+      <textarea id="embedCode" rows="6" readonly onclick="this.select()">&lt;iframe
   src="https://sintaxgram.pablozd.ar/"
   title="Sintaxgram — Análisis sintáctico"
   style="width:100%; height:900px; border:1px solid #ccc; border-radius:8px;"
   loading="lazy"&gt;
 &lt;/iframe&gt;</textarea>
-    <div class="embed-actions">
-      <button onclick="copyEmbedCode()">Copiar código</button>
-      <span class="copied" id="copiedMsg">¡Copiado!</span>
+      <div class="embed-actions">
+        <button onclick="copyEmbedCode()">Copiar código</button>
+        <span class="copied" id="copiedMsg">¡Copiado!</span>
+      </div>
+      <p class="embed-note">
+        <b>Moodle / Blackboard:</b> en el editor de la página o bloque, abrí la vista de código fuente HTML (icono
+        <code>&lt;/&gt;</code>) y pegá el código ahí.<br>
+        <b>WordPress:</b> agregá un bloque "HTML personalizado" y pegá el código.<br>
+        <b>Google Sites:</b> Insertar → Insertar código (Embed) → pegá el código.<br>
+        Ajustá <code>height</code> según el espacio disponible (900px suele andar bien en escritorio; en celular
+        conviene bajarlo a 500–600px).
+      </p>
     </div>
-    <p class="embed-note">
-      <b>Moodle / Blackboard:</b> en el editor de la página o bloque, abrí la vista de código fuente HTML (icono <code>&lt;/&gt;</code>) y pegá el código ahí.<br>
-      <b>WordPress:</b> agregá un bloque "HTML personalizado" y pegá el código.<br>
-      <b>Google Sites:</b> Insertar → Insertar código (Embed) → pegá el código.<br>
-      Ajustá <code>height</code> según el espacio disponible (900px suele andar bien en escritorio; en celular conviene bajarlo a 500–600px).
-    </p>
-  </div>
-</details>
-<footer class="appfooter">
-  <span>Sintaxgram &amp; sintaxismark — Pablo Zdrojewski, © <span id="year"></span>.
-    Código: <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT</a> · Diagramas/documentación: <a href="https://creativecommons.org/licenses/by/4.0/deed.es" target="_blank" rel="noopener">CC BY 4.0</a>
-    <br>
-    Repositorios: <a href="https://github.com/pablozd/sintaxgram" target="_blank" rel="noopener">sintaxgram</a> · <a href="https://github.com/pablozd/sintaxismark" target="_blank" rel="noopener">sintaxismark</a>
-    <br>
-    ¿Bugs, problemas o sugerencias? Escribí a <a href="mailto:support@pablozd.ar?subject=Sintaxgram%20—%20reporte">support@pablozd.ar</a>
-  </span>
-  <a class="dl-pkg" href="sintaxismark-paquete.zip" download>↓ sintaxismark.sty + manual (ES)</a>
-</footer>
+  </details>
+  <footer class="appfooter">
+    <span>Sintaxgram &amp; sintaxismark — Pablo Zdrojewski, © <span id="year"></span>.
+      Código: <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT</a> ·
+      Diagramas/documentación: <a href="https://creativecommons.org/licenses/by/4.0/deed.es" target="_blank"
+        rel="noopener">CC BY 4.0</a>
+      <br>
+      ¿Bugs, problemas o sugerencias? Escribí a <a
+        href="mailto:support@pablozd.ar?subject=Sintaxgram%20—%20reporte">support@pablozd.ar</a>
+    </span>
+    <a class="dl-pkg" href="sintaxismark-paquete.zip" download>↓ sintaxismark.sty + manual (ES)</a>
+  </footer>
 
-<script>
-// ── Colores globales ──────────────────────────────────────────────────────────
-let TEXT_COLOR = '#1a1a1a';
-let LINE_COLOR = '#1a1a1a';
+  <script>
+    // ── Tabla de comandos (sincronizada con sintaxismark v0.6.20) ──────────────────
+    const CMDS = {
+      SES: ["spanline", "ses", false], PVS: ["spanline", "pvs", false], PVC: ["spanline", "pvc", false],
+      SEC: ["spanline", "sec", false], ST: ["spanline", "st", false], OS: ["spanline", "os", false],
+      S: ["spanline", "sujeto", false], P: ["spanline", "predicado", false],
+      "OD*": ["openbox", "od", false], "OI*": ["openbox", "oi", false], "CCL*": ["openbox", "ccl", false],
+      "COMP*": ["openbox", "comp", false], "MD*": ["openbox", "md", false], "MI*": ["openbox", "mi", false],
+      "CAg*": ["openbox", "cag", false], "CREG*": ["openbox", "creg", false], "CSim*": ["openbox", "csim", false],
+      "CL*": ["openbox", "cl", false], "CM*": ["openbox", "cm", false], "PSO*": ["openbox", "pso", false],
+      "PSNO*": ["openbox", "psno", false], "POO*": ["openbox", "poo", false], "PONO*": ["openbox", "pono", false],
+      "ACT*": ["openbox", "act", false], "ACL*": ["openbox", "acl", false], "ACM*": ["openbox", "acm", false],
+      "ACF*": ["openbox", "acf", false], "ACC*": ["openbox", "acc", false], "ACCant*": ["openbox", "accant", false],
+      "ACI*": ["openbox", "acinst", false], "ACFin*": ["openbox", "acfin", false],
+      "MG*": ["openbox", "mg", false], "Ap*": ["openbox", "ap", false], "MF*": ["openbox", "mf", false],
+      "IPCR*": ["openbox", "ipcr", false], "Incl*": ["openbox", "incl", false],
+      OD: ["tagbelow", "od", true], OI: ["tagbelow", "oi", true],
+      CCL: ["tagbelow", "ccl", false], COMP: ["tagbelow", "comp", false], MD: ["tagbelow", "md", false],
+      MI: ["tagbelow", "mi", false], CAg: ["tagbelow", "cag", false], CREG: ["tagbelow", "creg", false],
+      CSim: ["tagbelow", "csim", false], CL: ["tagbelow", "cl", false], CM: ["tagbelow", "cm", false],
+      PSO: ["tagbelow", "pso", false], PSNO: ["tagbelow", "psno", false], POO: ["tagbelow", "poo", false],
+      PONO: ["tagbelow", "pono", false], ACT: ["tagbelow", "act", false], ACL: ["tagbelow", "acl", false],
+      ACM: ["tagbelow", "acm", false], ACF: ["tagbelow", "acf", false], ACC: ["tagbelow", "acc", false],
+      ACCant: ["tagbelow", "accant", false], ACI: ["tagbelow", "acinst", false], ACFin: ["tagbelow", "acfin", false],
+      MG: ["tagbelow", "mg", false], Ap: ["tagbelow", "ap", false], MF: ["tagbelow", "mf", false],
+      IPCR: ["tagbelow", "ipcr", false], Incl: ["tagbelow", "incl", false],
+      N: ["tagbelow", "n", false], NN: ["tagbelow", "nn", true], NV: ["tagbelow", "nv", true],
+      NP: ["tagbelow", "np", false], NA: ["tagbelow", "na", false], NAD: ["tagbelow", "nadv", false],
+    };
 
-const COLOR_PALETTE = [
-  { hex: '#1a1a1a', name: 'Negro'   },
-  { hex: '#6B7280', name: 'Gris'    },
-  { hex: '#DC2626', name: 'Rojo'    },
-  { hex: '#EA580C', name: 'Naranja' },
-  { hex: '#2563EB', name: 'Azul'    },
-  { hex: '#16A34A', name: 'Verde'   },
-  { hex: '#7C3AED', name: 'Violeta' },
-  { hex: '#DB2777', name: 'Rosa'    },
-];
+    // ── Etiquetas personalizadas ────────────────────────────────────────────────
+    const CUSTOM_KEY = 'sintaxgram_custom_tags_v1';
+    let CUSTOM_TAGS = [];
 
-const COLOR_NAMES = {
-  negro:'#1a1a1a', gris:'#6B7280', rojo:'#DC2626', naranja:'#EA580C',
-  azul:'#2563EB', verde:'#16A34A', violeta:'#7C3AED', rosa:'#DB2777',
-  blanco:'#ffffff', amarillo:'#EAB308', celeste:'#0EA5E9', marron:'#92400E',
-  black:'#1a1a1a', gray:'#6B7280', grey:'#6B7280', red:'#DC2626',
-  orange:'#EA580C', blue:'#2563EB', green:'#16A34A', purple:'#7C3AED',
-  pink:'#DB2777', white:'#ffffff', yellow:'#EAB308', brown:'#92400E',
-};
-
-function resolveColor(str) {
-  if (!str) return null;
-  const s = str.trim().toLowerCase();
-  if (COLOR_NAMES[s]) return COLOR_NAMES[s];
-  if (/^#[0-9a-f]{3,6}$/i.test(s)) return s;
-  if (/^[0-9a-f]{6}$/i.test(s)) return '#' + s;
-  return null;
-}
-
-function buildColorRow(rowId, getCurrent, setCurrent) {
-  const row = document.getElementById(rowId);
-  if (!row) return;
-  row.innerHTML = '';
-  for (const p of COLOR_PALETTE) {
-    const sw = document.createElement('div');
-    sw.className = 'color-swatch' + (getCurrent() === p.hex ? ' active' : '');
-    sw.style.background = p.hex;
-    sw.title = p.name;
-    sw.addEventListener('click', () => {
-      setCurrent(p.hex);
-      buildColorRow(rowId, getCurrent, setCurrent);
-      update();
-    });
-    row.appendChild(sw);
-  }
-  const inp = document.createElement('input');
-  inp.type = 'color';
-  inp.className = 'color-native';
-  inp.value = getCurrent();
-  inp.title = 'Color personalizado';
-  inp.addEventListener('input', () => {
-    setCurrent(inp.value);
-    row.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-    update();
-  });
-  row.appendChild(inp);
-}
-
-function initColorPickers() {
-  buildColorRow('textColorRow', () => TEXT_COLOR, v => { TEXT_COLOR = v; });
-  buildColorRow('lineColorRow', () => LINE_COLOR, v => { LINE_COLOR = v; });
-}
-
-// ── Tabla de comandos (sincronizada con sintaxismark v0.6.20) ──────────────────
-const CMDS = {
-  SES:["spanline","ses",false], PVS:["spanline","pvs",false], PVC:["spanline","pvc",false],
-  SEC:["spanline","sec",false], ST:["spanline","st",false], OS:["spanline","os",false],
-  S:["spanline","sujeto",false], P:["spanline","predicado",false],
-  "OD*":["openbox","od",false], "OI*":["openbox","oi",false], "CCL*":["openbox","ccl",false],
-  "COMP*":["openbox","comp",false], "MD*":["openbox","md",false], "MI*":["openbox","mi",false],
-  "CAg*":["openbox","cag",false], "CREG*":["openbox","creg",false], "CSim*":["openbox","csim",false],
-  "CL*":["openbox","cl",false], "CM*":["openbox","cm",false], "PSO*":["openbox","pso",false],
-  "PSNO*":["openbox","psno",false], "POO*":["openbox","poo",false], "PONO*":["openbox","pono",false],
-  "ACT*":["openbox","act",false], "ACL*":["openbox","acl",false], "ACM*":["openbox","acm",false],
-  "ACF*":["openbox","acf",false], "ACC*":["openbox","acc",false], "ACCant*":["openbox","accant",false],
-  "ACI*":["openbox","acinst",false], "ACFin*":["openbox","acfin",false],
-  "MG*":["openbox","mg",false], "Ap*":["openbox","ap",false], "MF*":["openbox","mf",false],
-  "IPCR*":["openbox","ipcr",false], "Incl*":["openbox","incl",false],
-  OD:["tagbelow","od",true], OI:["tagbelow","oi",true],
-  CCL:["tagbelow","ccl",false], COMP:["tagbelow","comp",false], MD:["tagbelow","md",false],
-  MI:["tagbelow","mi",false], CAg:["tagbelow","cag",false], CREG:["tagbelow","creg",false],
-  CSim:["tagbelow","csim",false], CL:["tagbelow","cl",false], CM:["tagbelow","cm",false],
-  PSO:["tagbelow","pso",false], PSNO:["tagbelow","psno",false], POO:["tagbelow","poo",false],
-  PONO:["tagbelow","pono",false], ACT:["tagbelow","act",false], ACL:["tagbelow","acl",false],
-  ACM:["tagbelow","acm",false], ACF:["tagbelow","acf",false], ACC:["tagbelow","acc",false],
-  ACCant:["tagbelow","accant",false], ACI:["tagbelow","acinst",false], ACFin:["tagbelow","acfin",false],
-  MG:["tagbelow","mg",false], Ap:["tagbelow","ap",false], MF:["tagbelow","mf",false],
-  IPCR:["tagbelow","ipcr",false], Incl:["tagbelow","incl",false],
-  N:["tagbelow","n",false], NN:["tagbelow","nn",true], NV:["tagbelow","nv",true],
-  NP:["tagbelow","np",false], NA:["tagbelow","na",false], NAD:["tagbelow","nadv",false],
-};
-
-// ── Etiquetas personalizadas ────────────────────────────────────────────────
-const CUSTOM_KEY = 'sintaxgram_custom_tags_v1';
-let CUSTOM_TAGS = [];
-
-// Agrega un comando definido por el usuario a la tabla CMDS (motor de render)
-function registerCustomTag(def) {
-  CMDS[def.name] = [def.kind, def.label, !!def.ul];
-  if (def.kind === 'tagbelow' && def.pair) {
-    CMDS[def.name + '*'] = ['openbox', def.label, false];
-  }
-}
-
-function loadCustomTags() {
-  try {
-    const raw = localStorage.getItem(CUSTOM_KEY);
-    if (raw) CUSTOM_TAGS = JSON.parse(raw);
-  } catch(e) { CUSTOM_TAGS = []; }
-  for (const def of CUSTOM_TAGS) registerCustomTag(def);
-  renderCustomChips();
-}
-
-function saveCustomTags() {
-  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(CUSTOM_TAGS)); } catch(e) {}
-}
-
-function makeChip(name, kind, mod) {
-  const cls = kind === 'spanline' ? 'above' : kind === 'openbox' ? 'below' : '';
-  const span = document.createElement('span');
-  span.className = ('chip custom ' + cls).trim();
-  span.appendChild(document.createTextNode(name));
-  const insertStr = mod ? `${name}(${mod}){…}` : `${name}{…}`;
-  span.title = `Insertar ${insertStr}`;
-  span.addEventListener('click', () => ins(insertStr));
-  const del = document.createElement('span');
-  del.className = 'del'; del.textContent = '×';
-  del.title = 'Eliminar etiqueta';
-  del.addEventListener('click', (ev) => { ev.stopPropagation(); removeCustomTag(name.replace(/\*$/, '')); });
-  span.appendChild(del);
-  return span;
-}
-
-function renderCustomChips() {
-  const box = document.getElementById('customChips');
-  box.innerHTML = '';
-  for (const def of CUSTOM_TAGS) {
-    box.appendChild(makeChip(def.name, def.kind, def.mod || ''));
-    if (def.kind === 'tagbelow' && def.pair) box.appendChild(makeChip(def.name + '*', 'openbox', ''));
-  }
-}
-
-function removeCustomTag(name) {
-  const idx = CUSTOM_TAGS.findIndex(d => d.name === name);
-  if (idx === -1) return;
-  const def = CUSTOM_TAGS[idx];
-  delete CMDS[def.name];
-  if (def.kind === 'tagbelow' && def.pair) delete CMDS[def.name + '*'];
-  CUSTOM_TAGS.splice(idx, 1);
-  saveCustomTags();
-  renderCustomChips();
-}
-
-function toggleTagForm() {
-  const form = document.getElementById('tagForm');
-  form.classList.toggle('open');
-  if (form.classList.contains('open')) {
-    document.getElementById('ctMod').style.display = 'none';
-    onKindChange();
-  }
-}
-
-function onKindChange() {
-  const kind = document.getElementById('ctKind').value;
-  const show = kind === 'tagbelow' ? '' : 'none';
-  document.getElementById('ctUlWrap').style.display = show;
-  document.getElementById('ctPairWrap').style.display = show;
-  // selector de modificador solo para openbox/spanline
-  document.getElementById('ctMod').style.display = kind === 'tagbelow' ? 'none' : '';
-}
-
-function addCustomTag() {
-  const name  = document.getElementById('ctName').value.trim();
-  const label = document.getElementById('ctLabel').value.trim();
-  const kind  = document.getElementById('ctKind').value;
-  const ul    = document.getElementById('ctUl').checked;
-  const pair  = document.getElementById('ctPair').checked;
-  const mod   = document.getElementById('ctMod').value;
-
-  if (!name || !label) { alert('Completá el comando y la etiqueta.'); return; }
-  if (/[\s{}*()\[\]]/.test(name)) { alert('El nombre del comando no puede tener espacios, llaves, paréntesis ni *.'); return; }
-  if (CMDS[name] || (kind === 'tagbelow' && pair && CMDS[name + '*'])) {
-    alert(`Ya existe un comando "${name}".`); return;
-  }
-
-  const def = {
-    name, label, kind,
-    ul:   kind === 'tagbelow' ? ul   : false,
-    pair: kind === 'tagbelow' ? pair : false,
-    mod:  kind !== 'tagbelow' ? mod  : '',
-  };
-  CUSTOM_TAGS.push(def);
-  registerCustomTag(def);
-  saveCustomTags();
-  renderCustomChips();
-
-  document.getElementById('ctName').value = '';
-  document.getElementById('ctLabel').value = '';
-  document.getElementById('ctMod').value = '';
-  toggleTagForm();
-}
-
-function copyEmbedCode() {
-  const ta = document.getElementById('embedCode');
-  const msg = document.getElementById('copiedMsg');
-  const text = ta.value;
-  const done = () => {
-    msg.classList.add('show');
-    clearTimeout(copyEmbedCode._t);
-    copyEmbedCode._t = setTimeout(() => msg.classList.remove('show'), 1500);
-  };
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(done).catch(() => { ta.select(); document.execCommand('copy'); done(); });
-  } else {
-    ta.select();
-    document.execCommand('copy');
-    done();
-  }
-}
-
-function exportTags() {
-  const a = document.createElement('a');
-  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(CUSTOM_TAGS, null, 2));
-  a.download = 'sintaxgram-etiquetas.json'; a.click();
-}
-
-function importTags(ev) {
-  const file = ev.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const arr = JSON.parse(reader.result);
-      let added = 0, skipped = 0;
-      for (const def of arr) {
-        if (!def.name || !def.label || !def.kind || CMDS[def.name]) { skipped++; continue; }
-        CUSTOM_TAGS.push(def);
-        registerCustomTag(def);
-        added++;
+    // Agrega un comando definido por el usuario a la tabla CMDS (motor de render)
+    function registerCustomTag(def) {
+      CMDS[def.name] = [def.kind, def.label, !!def.ul];
+      if (def.kind === 'tagbelow' && def.pair) {
+        CMDS[def.name + '*'] = ['openbox', def.label, false];
       }
+    }
+
+    function loadCustomTags() {
+      try {
+        const raw = localStorage.getItem(CUSTOM_KEY);
+        if (raw) CUSTOM_TAGS = JSON.parse(raw);
+      } catch (e) { CUSTOM_TAGS = []; }
+      for (const def of CUSTOM_TAGS) registerCustomTag(def);
+      renderCustomChips();
+    }
+
+    function saveCustomTags() {
+      try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(CUSTOM_TAGS)); } catch (e) { }
+    }
+
+    function makeChip(name, kind, mod) {
+      const cls = kind === 'spanline' ? 'above' : kind === 'openbox' ? 'below' : '';
+      const span = document.createElement('span');
+      span.className = ('chip custom ' + cls).trim();
+      span.appendChild(document.createTextNode(name));
+      const insertStr = mod ? `${name}(${mod}){…}` : `${name}{…}`;
+      span.title = `Insertar ${insertStr}`;
+      span.addEventListener('click', () => ins(insertStr));
+      const del = document.createElement('span');
+      del.className = 'del'; del.textContent = '×';
+      del.title = 'Eliminar etiqueta';
+      del.addEventListener('click', (ev) => { ev.stopPropagation(); removeCustomTag(name.replace(/\*$/, '')); });
+      span.appendChild(del);
+      return span;
+    }
+
+    function renderCustomChips() {
+      const box = document.getElementById('customChips');
+      box.innerHTML = '';
+      for (const def of CUSTOM_TAGS) {
+        box.appendChild(makeChip(def.name, def.kind, def.mod || ''));
+        if (def.kind === 'tagbelow' && def.pair) box.appendChild(makeChip(def.name + '*', 'openbox', ''));
+      }
+    }
+
+    function removeCustomTag(name) {
+      const idx = CUSTOM_TAGS.findIndex(d => d.name === name);
+      if (idx === -1) return;
+      const def = CUSTOM_TAGS[idx];
+      delete CMDS[def.name];
+      if (def.kind === 'tagbelow' && def.pair) delete CMDS[def.name + '*'];
+      CUSTOM_TAGS.splice(idx, 1);
       saveCustomTags();
       renderCustomChips();
-      if (skipped) alert(`Importadas ${added}, omitidas ${skipped} (nombre repetido o inválido).`);
-    } catch(e) { alert('Archivo inválido: ' + e.message); }
-    ev.target.value = '';
-  };
-  reader.readAsText(file);
-}
-
-// ── Parser ─────────────────────────────────────────────────────────────────────
-// Modificadores válidos para CMD(mod){…}
-const VALID_MODS = new Set(['r','l','rl','ne','nr','nl']);
-
-function tokenize(src) {
-  const toks = []; let i = 0;
-  while (i < src.length) {
-    if (/\s/.test(src[i])) { i++; continue; }
-    if (src[i] === '\\' && src[i+1] === ';') { toks.push(['SPACE','\\;']); i += 2; continue; }
-    if (src[i] === '\\' && src[i+1] === '0') { toks.push(['WORD','∅']); i += 2; continue; }
-    // Formato de texto: \b{...} \i{...} \u{...} \s{...}
-    if (src[i] === '\\' && 'bius'.includes(src[i+1]) && src[i+2] === '{') {
-      const fmtMap = {b:'FMT_B', i:'FMT_I', u:'FMT_U', s:'FMT_S'};
-      const type = fmtMap[src[i+1]];
-      let depth = 0, j = i + 2;
-      while (j < src.length) {
-        if (src[j] === '{') depth++;
-        else if (src[j] === '}') { depth--; if (depth === 0) { j++; break; } }
-        j++;
-      }
-      toks.push([type, src.slice(i+3, j-1)]);
-      i = j; continue;
     }
-    if (src[i] === '{') { toks.push(['LB','{']); i++; }
-    else if (src[i] === '}') { toks.push(['RB','}']); i++; }
-    // Superíndice/subíndice flotante: ^{...} o _{...} al inicio del token
-    else if ((src[i] === '^' || src[i] === '_') && src[i+1] === '{') {
-      const type = src[i] === '^' ? 'SUP' : 'SUB';
-      let depth = 0, j = i + 1;
-      while (j < src.length) {
-        if (src[j] === '{') depth++;
-        else if (src[j] === '}') { depth--; if (depth === 0) { j++; break; } }
-        j++;
+
+    function toggleTagForm() {
+      const form = document.getElementById('tagForm');
+      form.classList.toggle('open');
+      if (form.classList.contains('open')) {
+        document.getElementById('ctMod').style.display = 'none';
+        onKindChange();
       }
-      const inner = src.slice(i+2, j-1); // contenido entre { }
-      toks.push([type, inner]);
-      i = j;
     }
-    else {
-      let j = i;
-      // Lee hasta espacio, llaves, o ^{ / _{  (inicio de índice)
-      while (j < src.length) {
-        if (/[\s{}]/.test(src[j])) break;
-        if ((src[j] === '^' || src[j] === '_') && src[j+1] === '{') break;
-        j++;
-      }
-      let w = src.slice(i, j);
 
-      // Detectar modificador pegado: CMD(mod){ → separa en CMD + MOD + LB
-      const mParen = w.match(/^(.+)\(([^)]+)\)$/);
-      if (mParen) {
-        const base = mParen[1], mod = mParen[2];
-        if (Object.prototype.hasOwnProperty.call(CMDS, base) && VALID_MODS.has(mod)) {
-          let k = j;
-          while (k < src.length && /\s/.test(src[k])) k++;
-          if (k < src.length && src[k] === '{') {
-            toks.push(['CMD', base]);
-            toks.push(['MOD', mod]);
-            i = j; continue;
-          }
-        }
-      }
-
-      // Detectar color individual: CMD[color]{ → separa en CMD + CLR + LB
-      const mColor = w.match(/^(.+)\[([^\]]+)\]$/);
-      if (mColor) {
-        const base = mColor[1], clr = mColor[2];
-        if (Object.prototype.hasOwnProperty.call(CMDS, base)) {
-          let k = j;
-          while (k < src.length && /\s/.test(src[k])) k++;
-          if (k < src.length && src[k] === '{') {
-            toks.push(['CMD', base]);
-            toks.push(['CLR', clr]);
-            i = j; continue;
-          }
-        }
-      }
-
-      // Detectar super/subíndice pegado al final de la palabra: palabra^{...} o palabra_{...}
-      // Puede haber múltiples (^{a}_{b})
-      const supsubRe = /^(.*?)([\^_]\{[^}]*\})+$/;
-      const ssMatch = w.match(supsubRe);
-      if (ssMatch && (w.includes('^{') || w.includes('_{')) ) {
-        // descomponemos: base + lista de ^{}/_{} en orden
-        let rest = w;
-        const base2 = rest.match(/^(.*?)(?=[\^_]\{)/)?.[1] ?? rest;
-        // tokenizar la base como CMD o WORD, luego los índices como SUP/SUB
-        const baseType = Object.prototype.hasOwnProperty.call(CMDS, base2) ? 'CMD' : 'WORD';
-        if (base2) toks.push([baseType, base2]);
-        // parsear los ^{}/_{} restantes en orden
-        let ri = base2.length;
-        while (ri < rest.length) {
-          if ((rest[ri] === '^' || rest[ri] === '_') && rest[ri+1] === '{') {
-            const type2 = rest[ri] === '^' ? 'SUP' : 'SUB';
-            let depth2 = 0, rj = ri + 1;
-            while (rj < rest.length) {
-              if (rest[rj] === '{') depth2++;
-              else if (rest[rj] === '}') { depth2--; if (depth2 === 0) { rj++; break; } }
-              rj++;
-            }
-            toks.push([type2, rest.slice(ri+2, rj-1)]);
-            ri = rj;
-          } else break;
-        }
-        i = j; continue;
-      }
-
-      toks.push([Object.prototype.hasOwnProperty.call(CMDS, w) ? 'CMD' : 'WORD', w]);
-      i = j;
+    function onKindChange() {
+      const kind = document.getElementById('ctKind').value;
+      const show = kind === 'tagbelow' ? '' : 'none';
+      document.getElementById('ctUlWrap').style.display = show;
+      document.getElementById('ctPairWrap').style.display = show;
+      // selector de modificador solo para openbox/spanline
+      document.getElementById('ctMod').style.display = kind === 'tagbelow' ? 'none' : '';
     }
-  }
-  return toks;
-}
 
-function parse(src) {
-  const toks = tokenize(src); let pos = 0;
-  const peek = () => pos < toks.length ? toks[pos] : ['EOF',''];
-  const eat  = () => toks[pos++];
-  function eatMod() {
-    if (peek()[0] === 'MOD') return eat()[1];
-    return null;
-  }
-  function eatClr() {
-    if (peek()[0] === 'CLR') return eat()[1];
-    return null;
-  }
-  // Consume SUP/SUB tokens y los acumula sobre el nodo previo o crea nodo flotante
-  function eatIndices(kids) {
-    while (peek()[0] === 'SUP' || peek()[0] === 'SUB') {
-      const [type, val] = eat();
-      if (kids.length > 0) {
-        // pegado al nodo anterior
-        const prev = kids[kids.length - 1];
-        if (type === 'SUP') (prev.sup = prev.sup || []).push(val);
-        else                (prev.sub = prev.sub || []).push(val);
+    function addCustomTag() {
+      const name = document.getElementById('ctName').value.trim();
+      const label = document.getElementById('ctLabel').value.trim();
+      const kind = document.getElementById('ctKind').value;
+      const ul = document.getElementById('ctUl').checked;
+      const pair = document.getElementById('ctPair').checked;
+      const mod = document.getElementById('ctMod').value;
+
+      if (!name || !label) { alert('Completá el comando y la etiqueta.'); return; }
+      if (/[\s{}*()\[\]]/.test(name)) { alert('El nombre del comando no puede tener espacios, llaves, paréntesis ni *.'); return; }
+      if (CMDS[name] || (kind === 'tagbelow' && pair && CMDS[name + '*'])) {
+        alert(`Ya existe un comando "${name}".`); return;
+      }
+
+      const def = {
+        name, label, kind,
+        ul: kind === 'tagbelow' ? ul : false,
+        pair: kind === 'tagbelow' ? pair : false,
+        mod: kind !== 'tagbelow' ? mod : '',
+      };
+      CUSTOM_TAGS.push(def);
+      registerCustomTag(def);
+      saveCustomTags();
+      renderCustomChips();
+
+      document.getElementById('ctName').value = '';
+      document.getElementById('ctLabel').value = '';
+      document.getElementById('ctMod').value = '';
+      toggleTagForm();
+    }
+
+    function copyEmbedCode() {
+      const ta = document.getElementById('embedCode');
+      const msg = document.getElementById('copiedMsg');
+      const text = ta.value;
+      const done = () => {
+        msg.classList.add('show');
+        clearTimeout(copyEmbedCode._t);
+        copyEmbedCode._t = setTimeout(() => msg.classList.remove('show'), 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(() => { ta.select(); document.execCommand('copy'); done(); });
       } else {
-        // flotante (sin nodo base previo, ej: ^{ST}[)
-        kids.push(type === 'SUP' ? {supFloat: val} : {subFloat: val});
+        ta.select();
+        document.execCommand('copy');
+        done();
       }
     }
-  }
-  function seq() {
-    const kids = [];
-    while (!['RB','EOF'].includes(peek()[0])) {
-      const [t,v] = peek();
-      if (t === 'CMD') {
-        eat(); const mod = eatMod(); const clr = eatClr(); eat();
-        const ch = seq(); eat();
-        const [kind,label,ul] = CMDS[v];
-        kids.push({kind, label, ul, ch, mod, clr});
-      } else if (t === 'WORD') { eat(); kids.push({word: v}); }
-      else if (t === 'SPACE') { eat(); kids.push({space: true, gap: EXPLICIT_GAP}); }
-      else if (t === 'SUP' || t === 'SUB') { eatIndices(kids); continue; }
-      else if (t.startsWith('FMT_')) { eat(); kids.push({fmt: t.slice(4).toLowerCase(), text: v}); }
-      else break;
-      eatIndices(kids); // índices pegados al token recién agregado
-    }
-    return kids;
-  }
-  const root = [];
-  while (peek()[0] !== 'EOF') {
-    const [t,v] = peek();
-    if (t === 'CMD') {
-      eat(); const mod = eatMod(); const clr = eatClr(); eat();
-      const ch = seq(); eat();
-      const [kind,label,ul] = CMDS[v];
-      root.push({kind, label, ul, ch, mod, clr});
-    } else if (t === 'WORD') { eat(); root.push({word: v}); }
-    else if (t === 'SPACE') { eat(); root.push({space: true, gap: EXPLICIT_GAP}); }
-    else if (t === 'SUP' || t === 'SUB') { eatIndices(root); continue; }
-    else if (t.startsWith('FMT_')) { eat(); root.push({fmt: t.slice(4).toLowerCase(), text: v}); }
-    else break;
-    eatIndices(root);
-  }
-  return root;
-}
 
-// ── Constantes de geometría ───────────────────────────────────────────────────
-const CW = 8.5, SW = 8, FS = 16;
-// ASCENT/DESCENT son dinámicos — se actualizan en renderSVG según FONT_SIZE
-let ASCENT  = 12.48;
-let DESCENT = 4.0;
-const SL_GAP   = -2;
-const SL_PATA_H = 10;
-const SL_STEP   = 18;
-const SL_LBL_GAP = 3;
-const SL_XPAD     = 2;
-const OB_PATA_MIN = 1;
-const OB_GAP      = 5;
-const OB_XPAD     = 3;
-const PATA_TAG = 1, STEP_TAG = 16;
-const LBH = 13, LBGAP = 3;
-const PAD = 38, PTOP = 16, PBOT = 20;
-const LW = 1.8, ULW = 1.4;
-const BELOW = new Set(["openbox","tagbelow"]);
-const ABOVE = new Set(["spanline"]);
-const EXPLICIT_GAP = 14;
-
-// ── Configuración de fuente (controlada por el drawer de config) ──────────────
-let FONT_SIZE   = 16;  // pts, rango 8–24
-let FONT_FAMILY = 'serif'; // 'serif' | 'sans'
-const FONT_SERIF = "Georgia, 'Times New Roman', serif";
-const FONT_SANS  = "system-ui, Arial, sans-serif";
-function currentFont() { return FONT_FAMILY === 'serif' ? FONT_SERIF : FONT_SANS; }
-const SUP_RATIO = 0.65;   // tamaño del super/subíndice relativo a FONT_SIZE
-const SUP_SHIFT = 0.45;   // desplazamiento vertical del superíndice (fracción de FONT_SIZE)
-const SUB_SHIFT = 0.25;   // desplazamiento hacia abajo del subíndice
-// Evita que el ancho calculado de palabras/etiquetas (antes estimado con un
-// ancho fijo por carácter, CW) deje huecos dentro de las cajas cuando la
-// fuente real (proporcional, serif) es más angosta que esa estimación.
-const _measureCanvas = document.createElement('canvas');
-const _measureCtx = _measureCanvas.getContext('2d');
-const _measureCache = new Map();
-function measureText(text, font) {
-  const key = font + '\u0000' + text;
-  let w = _measureCache.get(key);
-  if (w === undefined) {
-    _measureCtx.font = font;
-    w = _measureCtx.measureText(text).width;
-    _measureCache.set(key, w);
-  }
-  return w;
-}
-function measureWord(word, bold) {
-  const weight = bold ? 'bold ' : '';
-  return measureText(word, `${weight}${FONT_SIZE}px ${currentFont()}`);
-}
-function measureSup(text) {
-  return measureText(text, `${Math.round(FONT_SIZE * SUP_RATIO)}px ${currentFont()}`);
-}
-function measureLabel(label) {
-  return measureText(label.toUpperCase(), `11px system-ui, sans-serif`);
-}
-
-
-// ── Cálculo de filas ──────────────────────────────────────────────────────────
-function rowBelow(node) {
-  let max = -1;
-  for (const c of node.ch) if (!c.word && !c.space && !c.supFloat && !c.subFloat && BELOW.has(c.kind)) max = Math.max(max, rowBelow(c));
-  return max + 1;
-}
-function rowAbove(node) {
-  let max = -1;
-  for (const c of node.ch) if (!c.word && !c.space && !c.supFloat && !c.subFloat && ABOVE.has(c.kind)) max = Math.max(max, rowAbove(c));
-  return max + 1;
-}
-function maxDA(nodes) {
-  let m = 0;
-  for (const n of nodes) {
-    if (n.word || n.space || n.supFloat || n.subFloat || n.fmt) continue;
-    if (ABOVE.has(n.kind)) m = Math.max(m, rowAbove(n) + 1);
-    m = Math.max(m, maxDA(n.ch));
-  }
-  return m;
-}
-
-// ── Posición vertical de la línea openbox ─────────────────────────────────────
-function bottomOf(nodes, by) {
-  let m = by + DESCENT;
-  for (const n of nodes) {
-    if (n.word || n.space || n.supFloat || n.subFloat || n.fmt) continue;
-    if (n.kind === 'tagbelow') m = Math.max(m, by + DESCENT + PATA_TAG + rowBelow(n)*(PATA_TAG+STEP_TAG) + LBH);
-    else if (n.kind === 'openbox') m = Math.max(m, lineYofBox(n, by) + LBGAP + LBH);
-  }
-  return m;
-}
-function lineYofBox(node, by) {
-  return Math.max(by + DESCENT + OB_PATA_MIN, bottomOf(node.ch, by) + OB_GAP);
-}
-function maxYBelow(nodes, by) {
-  let m = 0;
-  for (const n of nodes) {
-    if (n.word || n.space || n.supFloat || n.subFloat || n.fmt) continue;
-    if (n.kind === 'openbox')  m = Math.max(m, lineYofBox(n, by) + LBGAP + LBH);
-    if (n.kind === 'tagbelow') m = Math.max(m, by + DESCENT + PATA_TAG + rowBelow(n)*(PATA_TAG+STEP_TAG) + LBH);
-    m = Math.max(m, maxYBelow(n.ch, by));
-  }
-  return m;
-}
-
-// ── Layout horizontal ─────────────────────────────────────────────────────────
-function layout(nodes, x0) {
-  const boxes = []; let x = x0;
-  for (const n of nodes) {
-    if (n.space) { x += n.gap; continue; }
-    if (n.supFloat || n.subFloat) {
-      // nodo flotante: solo ocupa el ancho del texto del índice (sin base)
-      const txt = n.supFloat || n.subFloat;
-      const w = measureSup(txt);
-      boxes.push({x, w, n}); x += w + SW;
-    } else if (n.word || n.fmt) {
-      const txt = n.word ?? n.text;
-      const bold = n.fmt === 'b';
-      let w = measureWord(txt, bold);
-      if (n.sup) w += n.sup.reduce((a,s) => a + measureSup(s), 0);
-      if (n.sub) w += n.sub.reduce((a,s) => a + measureSup(s), 0);
-      boxes.push({x, w, n}); x += w + SW;
-    } else {
-      const {boxes: ch, x: nx} = layout(n.ch, x);
-      const bx = ch.length ? ch[0].x : x;
-      const bw = Math.max((nx - SW) - bx, measureLabel(n.label));
-      boxes.push({x: bx, w: bw, n, ch}); x = nx;
-    }
-  }
-  return {boxes, x};
-}
-
-// ── Render SVG ────────────────────────────────────────────────────────────────
-// ── Ancho máximo del diagrama (en px SVG, sin PAD) ────────────────────────────
-const MAX_LINE_W = 700 - PAD * 2;
-
-// ── Salto de línea correcto ───────────────────────────────────────────────────
-// Estrategia: layout completo en una línea, luego recortar por rangos de X.
-// Para cada renglón [x0, x1), clonamos el árbol de cajas incluyendo solo
-// los nodos cuyo rango [bx, rx] se solapa con [x0, x1), y aplicamos
-// mod de ruptura a los que cruzan el borde.
-
-// Recolectar los puntos de corte: posiciones X donde la línea debe partirse.
-// Trabajamos sobre las cajas aplanadas (hojas) para encontrar dónde cortar.
-function findLeaves(boxes) {
-  const leaves = [];
-  function walk(bs) {
-    for (const b of bs) {
-      if (b.n.word || b.n.supFloat || b.n.subFloat || b.n.space || b.n.fmt) leaves.push(b);
-      else if (b.ch) walk(b.ch);
-    }
-  }
-  walk(boxes);
-  return leaves;
-}
-
-// Dado el árbol de cajas completo y un rango [x0, x1),
-// devuelve una lista de cajas "recortadas" al rango con mods de ruptura.
-// Un nodo se incluye si su [bx, rx] se solapa con [x0, x1).
-// Si el nodo cruza el borde izquierdo → mod 'nl'; cruza derecho → mod 'nr'; ambos → 'ne'.
-function clipBoxes(boxes, x0, x1) {
-  const result = [];
-  for (const b of boxes) {
-    const bx = b.x, rx = b.x + b.w;
-    // sin solapamiento: saltar
-    if (rx <= x0 || bx >= x1) continue;
-
-    const n = b.n;
-    if (n.word || n.supFloat || n.subFloat || n.space || n.fmt) {
-      // hoja: siempre la incluimos si solapa
-      result.push({...b, x: b.x - x0});
-      continue;
+    function exportTags() {
+      const a = document.createElement('a');
+      a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(CUSTOM_TAGS, null, 2));
+      a.download = 'sintaxgram-etiquetas.json'; a.click();
     }
 
-    // nodo compuesto: recortar hijos recursivamente
-    const clippedCh = b.ch ? clipBoxes(b.ch, x0, x1) : [];
-
-    // determinar mod de ruptura para este nodo en este renglón
-    const crossLeft  = bx < x0;   // el nodo viene del renglón anterior
-    const crossRight = rx > x1;   // el nodo continúa en el siguiente renglón
-    let breakMod = n.mod || null;
-    if (crossLeft && crossRight) breakMod = 'ne';
-    else if (crossLeft)  breakMod = 'nl';
-    else if (crossRight) breakMod = 'nr';
-
-    // recalcular bx/w basándonos en los hijos clipeados
-    if (clippedCh.length === 0) continue;
-    const newBx = Math.min(...clippedCh.map(c => c.x));
-    const newRx = Math.max(...clippedCh.map(c => c.x + c.w));
-
-    result.push({
-      x: newBx,
-      w: newRx - newBx,
-      n: {...n, mod: breakMod},
-      ch: clippedCh
-    });
-  }
-  return result;
-}
-
-// Dado el árbol de cajas completo, devuelve un array de renglones.
-// Cada renglón es un array de cajas ya recortadas y re-offset a x=0.
-function computeLines(allBoxes) {
-  if (allBoxes.length === 0) return [[]];
-
-  // Encontrar los puntos de corte usando las hojas
-  const leaves = findLeaves(allBoxes);
-  if (leaves.length === 0) return [allBoxes];
-
-  const totalW = allBoxes[allBoxes.length-1].x + allBoxes[allBoxes.length-1].w;
-  if (totalW <= MAX_LINE_W) return [allBoxes];
-
-  // Construir lista de puntos de corte
-  // Cortar después de la última hoja que termina antes de x0 + MAX_LINE_W
-  const cuts = []; // [x_inicio, x_fin) de cada renglón
-  let x0 = 0;
-  while (x0 < totalW) {
-    const x1 = x0 + MAX_LINE_W;
-    // encontrar la última hoja que termina dentro del renglón
-    let cutX = x1;
-    // buscar el mejor punto de corte: borde derecho de la última hoja ≤ x1
-    let lastLeafEnd = x0;
-    for (const l of leaves) {
-      const lend = l.x + l.w;
-      if (lend <= x1 && lend > lastLeafEnd) lastLeafEnd = lend;
+    function importTags(ev) {
+      const file = ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const arr = JSON.parse(reader.result);
+          let added = 0, skipped = 0;
+          for (const def of arr) {
+            if (!def.name || !def.label || !def.kind || CMDS[def.name]) { skipped++; continue; }
+            CUSTOM_TAGS.push(def);
+            registerCustomTag(def);
+            added++;
+          }
+          saveCustomTags();
+          renderCustomChips();
+          if (skipped) alert(`Importadas ${added}, omitidas ${skipped} (nombre repetido o inválido).`);
+        } catch (e) { alert('Archivo inválido: ' + e.message); }
+        ev.target.value = '';
+      };
+      reader.readAsText(file);
     }
-    // si no hay ninguna hoja que quepa, forzamos corte en la primera hoja siguiente
-    if (lastLeafEnd === x0) {
-      // primera hoja que empieza en o después de x0
-      const next = leaves.find(l => l.x >= x0);
-      if (next) lastLeafEnd = next.x + next.w;
-      else break;
+
+    // ── Parser ─────────────────────────────────────────────────────────────────────
+    // Modificadores válidos para CMD(mod){…}
+    const VALID_MODS = new Set(['r', 'l', 'rl', 'ne', 'nr', 'nl']);
+
+    function tokenize(src) {
+      const toks = []; let i = 0;
+      while (i < src.length) {
+        if (/\s/.test(src[i])) { i++; continue; }
+        if (src[i] === '\\' && src[i + 1] === ';') { toks.push(['SPACE', '\\;']); i += 2; continue; }
+        if (src[i] === '\\' && src[i + 1] === '0') { toks.push(['WORD', '∅']); i += 2; continue; }
+        // Formato de texto: \b{...} \i{...} \u{...} \s{...}
+        if (src[i] === '\\' && 'bius'.includes(src[i + 1]) && src[i + 2] === '{') {
+          const fmtMap = { b: 'FMT_B', i: 'FMT_I', u: 'FMT_U', s: 'FMT_S' };
+          const type = fmtMap[src[i + 1]];
+          let depth = 0, j = i + 2;
+          while (j < src.length) {
+            if (src[j] === '{') depth++;
+            else if (src[j] === '}') { depth--; if (depth === 0) { j++; break; } }
+            j++;
+          }
+          toks.push([type, src.slice(i + 3, j - 1)]);
+          i = j; continue;
+        }
+        if (src[i] === '{') { toks.push(['LB', '{']); i++; }
+        else if (src[i] === '}') { toks.push(['RB', '}']); i++; }
+        // Superíndice/subíndice flotante: ^{...} o _{...} al inicio del token
+        else if ((src[i] === '^' || src[i] === '_') && src[i + 1] === '{') {
+          const type = src[i] === '^' ? 'SUP' : 'SUB';
+          let depth = 0, j = i + 1;
+          while (j < src.length) {
+            if (src[j] === '{') depth++;
+            else if (src[j] === '}') { depth--; if (depth === 0) { j++; break; } }
+            j++;
+          }
+          const inner = src.slice(i + 2, j - 1); // contenido entre { }
+          toks.push([type, inner]);
+          i = j;
+        }
+        else {
+          let j = i;
+          // Lee hasta espacio, llaves, o ^{ / _{  (inicio de índice)
+          while (j < src.length) {
+            if (/[\s{}]/.test(src[j])) break;
+            if ((src[j] === '^' || src[j] === '_') && src[j + 1] === '{') break;
+            j++;
+          }
+          let w = src.slice(i, j);
+
+          // Detectar modificador pegado: CMD(mod){ → separa en CMD + MOD + LB
+          const mParen = w.match(/^(.+)\(([^)]+)\)$/);
+          if (mParen) {
+            const base = mParen[1], mod = mParen[2];
+            if (Object.prototype.hasOwnProperty.call(CMDS, base) && VALID_MODS.has(mod)) {
+              let k = j;
+              while (k < src.length && /\s/.test(src[k])) k++;
+              if (k < src.length && src[k] === '{') {
+                toks.push(['CMD', base]);
+                toks.push(['MOD', mod]);
+                i = j; continue;
+              }
+            }
+          }
+
+          // Detectar super/subíndice pegado al final de la palabra: palabra^{...} o palabra_{...}
+          // Puede haber múltiples (^{a}_{b})
+          const supsubRe = /^(.*?)([\^_]\{[^}]*\})+$/;
+          const ssMatch = w.match(supsubRe);
+          if (ssMatch && (w.includes('^{') || w.includes('_{'))) {
+            // descomponemos: base + lista de ^{}/_{} en orden
+            let rest = w;
+            const base2 = rest.match(/^(.*?)(?=[\^_]\{)/)?.[1] ?? rest;
+            // tokenizar la base como CMD o WORD, luego los índices como SUP/SUB
+            const baseType = Object.prototype.hasOwnProperty.call(CMDS, base2) ? 'CMD' : 'WORD';
+            if (base2) toks.push([baseType, base2]);
+            // parsear los ^{}/_{} restantes en orden
+            let ri = base2.length;
+            while (ri < rest.length) {
+              if ((rest[ri] === '^' || rest[ri] === '_') && rest[ri + 1] === '{') {
+                const type2 = rest[ri] === '^' ? 'SUP' : 'SUB';
+                let depth2 = 0, rj = ri + 1;
+                while (rj < rest.length) {
+                  if (rest[rj] === '{') depth2++;
+                  else if (rest[rj] === '}') { depth2--; if (depth2 === 0) { rj++; break; } }
+                  rj++;
+                }
+                toks.push([type2, rest.slice(ri + 2, rj - 1)]);
+                ri = rj;
+              } else break;
+            }
+            i = j; continue;
+          }
+
+          toks.push([Object.prototype.hasOwnProperty.call(CMDS, w) ? 'CMD' : 'WORD', w]);
+          i = j;
+        }
+      }
+      return toks;
     }
-    cuts.push([x0, lastLeafEnd]);
-    x0 = lastLeafEnd;
-  }
-  if (x0 < totalW) cuts.push([x0, totalW]);
 
-  return cuts.map(([cx0, cx1]) => clipBoxes(allBoxes, cx0, cx1));
-}
+    function parse(src) {
+      const toks = tokenize(src); let pos = 0;
+      const peek = () => pos < toks.length ? toks[pos] : ['EOF', ''];
+      const eat = () => toks[pos++];
+      function eatMod() {
+        if (peek()[0] === 'MOD') return eat()[1];
+        return null;
+      }
+      // Consume SUP/SUB tokens y los acumula sobre el nodo previo o crea nodo flotante
+      function eatIndices(kids) {
+        while (peek()[0] === 'SUP' || peek()[0] === 'SUB') {
+          const [type, val] = eat();
+          if (kids.length > 0) {
+            // pegado al nodo anterior
+            const prev = kids[kids.length - 1];
+            if (type === 'SUP') (prev.sup = prev.sup || []).push(val);
+            else (prev.sub = prev.sub || []).push(val);
+          } else {
+            // flotante (sin nodo base previo, ej: ^{ST}[)
+            kids.push(type === 'SUP' ? { supFloat: val } : { subFloat: val });
+          }
+        }
+      }
+      function seq() {
+        const kids = [];
+        while (!['RB', 'EOF'].includes(peek()[0])) {
+          const [t, v] = peek();
+          if (t === 'CMD') {
+            eat(); const mod = eatMod(); eat();
+            const ch = seq(); eat();
+            const [kind, label, ul] = CMDS[v];
+            kids.push({ kind, label, ul, ch, mod });
+          } else if (t === 'WORD') { eat(); kids.push({ word: v }); }
+          else if (t === 'SPACE') { eat(); kids.push({ space: true, gap: EXPLICIT_GAP }); }
+          else if (t === 'SUP' || t === 'SUB') { eatIndices(kids); continue; }
+          else if (t.startsWith('FMT_')) { eat(); kids.push({ fmt: t.slice(4).toLowerCase(), text: v }); }
+          else break;
+          eatIndices(kids); // índices pegados al token recién agregado
+        }
+        return kids;
+      }
+      const root = [];
+      while (peek()[0] !== 'EOF') {
+        const [t, v] = peek();
+        if (t === 'CMD') {
+          eat(); const mod = eatMod(); eat();
+          const ch = seq(); eat();
+          const [kind, label, ul] = CMDS[v];
+          root.push({ kind, label, ul, ch, mod });
+        } else if (t === 'WORD') { eat(); root.push({ word: v }); }
+        else if (t === 'SPACE') { eat(); root.push({ space: true, gap: EXPLICIT_GAP }); }
+        else if (t === 'SUP' || t === 'SUB') { eatIndices(root); continue; }
+        else if (t.startsWith('FMT_')) { eat(); root.push({ fmt: t.slice(4).toLowerCase(), text: v }); }
+        else break;
+        eatIndices(root);
+      }
+      return root;
+    }
 
-function renderSVG(src) {
-  ASCENT  = FONT_SIZE * 0.78;
-  DESCENT = FONT_SIZE * 0.25;
-  const nodes = parse(src);
+    // ── Constantes de geometría ───────────────────────────────────────────────────
+    const CW = 8.5, SW = 8, FS = 16;
+    // ASCENT/DESCENT son dinámicos — se actualizan en renderSVG según FONT_SIZE
+    let ASCENT = 12.48;
+    let DESCENT = 4.0;
+    const SL_GAP = -2;
+    const SL_PATA_H = 10;
+    const SL_STEP = 18;
+    const SL_LBL_GAP = 3;
+    const SL_XPAD = 2;
+    const OB_PATA_MIN = 1;
+    const OB_GAP = 5;
+    const OB_XPAD = 3;
+    const PATA_TAG = 1, STEP_TAG = 16;
+    const LBH = 13, LBGAP = 3;
+    const PAD = 38, PTOP = 16, PBOT = 20;
+    const LW = 1.8, ULW = 1.4;
+    const BELOW = new Set(["openbox", "tagbelow"]);
+    const ABOVE = new Set(["spanline"]);
+    const EXPLICIT_GAP = 14;
 
-  // Layout completo en una sola línea primero
-  const {boxes: allBoxes} = layout(nodes, 0);
+    // ── Configuración de fuente (controlada por el drawer de config) ──────────────
+    let FONT_SIZE = 16;  // pts, rango 8–24
+    let FONT_FAMILY = 'serif'; // 'serif' | 'sans'
+    const FONT_SERIF = "Georgia, 'Times New Roman', serif";
+    const FONT_SANS = "system-ui, Arial, sans-serif";
+    function currentFont() { return FONT_FAMILY === 'serif' ? FONT_SERIF : FONT_SANS; }
+    const SUP_RATIO = 0.65;   // tamaño del super/subíndice relativo a FONT_SIZE
+    const SUP_SHIFT = 0.45;   // desplazamiento vertical del superíndice (fracción de FONT_SIZE)
+    const SUB_SHIFT = 0.25;   // desplazamiento hacia abajo del subíndice
+    // Evita que el ancho calculado de palabras/etiquetas (antes estimado con un
+    // ancho fijo por carácter, CW) deje huecos dentro de las cajas cuando la
+    // fuente real (proporcional, serif) es más angosta que esa estimación.
+    const _measureCanvas = document.createElement('canvas');
+    const _measureCtx = _measureCanvas.getContext('2d');
+    const _measureCache = new Map();
+    function measureText(text, font) {
+      const key = font + '\u0000' + text;
+      let w = _measureCache.get(key);
+      if (w === undefined) {
+        _measureCtx.font = font;
+        w = _measureCtx.measureText(text).width;
+        _measureCache.set(key, w);
+      }
+      return w;
+    }
+    function measureWord(word, bold) {
+      const weight = bold ? 'bold ' : '';
+      return measureText(word, `${weight}${FONT_SIZE}px ${currentFont()}`);
+    }
+    function measureSup(text) {
+      return measureText(text, `${Math.round(FONT_SIZE * SUP_RATIO)}px ${currentFont()}`);
+    }
+    function measureLabel(label) {
+      return measureText(label.toUpperCase(), `11px system-ui, sans-serif`);
+    }
 
-  // ¿Necesita partirse?
-  const totalW = allBoxes.length
-    ? allBoxes[allBoxes.length-1].x + allBoxes[allBoxes.length-1].w
-    : 0;
 
-  const isDark = false;
-  const fg = TEXT_COLOR;
-  const fgLine = LINE_COLOR;
-  const bg = 'white';
-  const fontFam = currentFont();
+    // ── Cálculo de filas ──────────────────────────────────────────────────────────
+    function rowBelow(node) {
+      let max = -1;
+      for (const c of node.ch) if (!c.word && !c.space && !c.supFloat && !c.subFloat && BELOW.has(c.kind)) max = Math.max(max, rowBelow(c));
+      return max + 1;
+    }
+    function rowAbove(node) {
+      let max = -1;
+      for (const c of node.ch) if (!c.word && !c.space && !c.supFloat && !c.subFloat && ABOVE.has(c.kind)) max = Math.max(max, rowAbove(c));
+      return max + 1;
+    }
+    function maxDA(nodes) {
+      let m = 0;
+      for (const n of nodes) {
+        if (n.word || n.space || n.supFloat || n.subFloat || n.fmt) continue;
+        if (ABOVE.has(n.kind)) m = Math.max(m, rowAbove(n) + 1);
+        m = Math.max(m, maxDA(n.ch));
+      }
+      return m;
+    }
 
-  const defs = `<defs>
+    // ── Posición vertical de la línea openbox ─────────────────────────────────────
+    function bottomOf(nodes, by) {
+      let m = by + DESCENT;
+      for (const n of nodes) {
+        if (n.word || n.space || n.supFloat || n.subFloat || n.fmt) continue;
+        if (n.kind === 'tagbelow') m = Math.max(m, by + DESCENT + PATA_TAG + rowBelow(n) * (PATA_TAG + STEP_TAG) + LBH);
+        else if (n.kind === 'openbox') m = Math.max(m, lineYofBox(n, by) + LBGAP + LBH);
+      }
+      return m;
+    }
+    function lineYofBox(node, by) {
+      return Math.max(by + DESCENT + OB_PATA_MIN, bottomOf(node.ch, by) + OB_GAP);
+    }
+    function maxYBelow(nodes, by) {
+      let m = 0;
+      for (const n of nodes) {
+        if (n.word || n.space || n.supFloat || n.subFloat || n.fmt) continue;
+        if (n.kind === 'openbox') m = Math.max(m, lineYofBox(n, by) + LBGAP + LBH);
+        if (n.kind === 'tagbelow') m = Math.max(m, by + DESCENT + PATA_TAG + rowBelow(n) * (PATA_TAG + STEP_TAG) + LBH);
+        m = Math.max(m, maxYBelow(n.ch, by));
+      }
+      return m;
+    }
+
+    // ── Layout horizontal ─────────────────────────────────────────────────────────
+    function layout(nodes, x0) {
+      const boxes = []; let x = x0;
+      for (const n of nodes) {
+        if (n.space) { x += n.gap; continue; }
+        if (n.supFloat || n.subFloat) {
+          // nodo flotante: solo ocupa el ancho del texto del índice (sin base)
+          const txt = n.supFloat || n.subFloat;
+          const w = measureSup(txt);
+          boxes.push({ x, w, n }); x += w + SW;
+        } else if (n.word || n.fmt) {
+          const txt = n.word ?? n.text;
+          const bold = n.fmt === 'b';
+          let w = measureWord(txt, bold);
+          if (n.sup) w += n.sup.reduce((a, s) => a + measureSup(s), 0);
+          if (n.sub) w += n.sub.reduce((a, s) => a + measureSup(s), 0);
+          boxes.push({ x, w, n }); x += w + SW;
+        } else {
+          const { boxes: ch, x: nx } = layout(n.ch, x);
+          const bx = ch.length ? ch[0].x : x;
+          const bw = Math.max((nx - SW) - bx, measureLabel(n.label));
+          boxes.push({ x: bx, w: bw, n, ch }); x = nx;
+        }
+      }
+      return { boxes, x };
+    }
+
+    // ── Render SVG ────────────────────────────────────────────────────────────────
+    // ── Ancho máximo del diagrama (en px SVG, sin PAD) ────────────────────────────
+    const MAX_LINE_W = 700 - PAD * 2;
+
+    // ── Salto de línea correcto ───────────────────────────────────────────────────
+    // Estrategia: layout completo en una línea, luego recortar por rangos de X.
+    // Para cada renglón [x0, x1), clonamos el árbol de cajas incluyendo solo
+    // los nodos cuyo rango [bx, rx] se solapa con [x0, x1), y aplicamos
+    // mod de ruptura a los que cruzan el borde.
+
+    // Recolectar los puntos de corte: posiciones X donde la línea debe partirse.
+    // Trabajamos sobre las cajas aplanadas (hojas) para encontrar dónde cortar.
+    function findLeaves(boxes) {
+      const leaves = [];
+      function walk(bs) {
+        for (const b of bs) {
+          if (b.n.word || b.n.supFloat || b.n.subFloat || b.n.space || b.n.fmt) leaves.push(b);
+          else if (b.ch) walk(b.ch);
+        }
+      }
+      walk(boxes);
+      return leaves;
+    }
+
+    // Dado el árbol de cajas completo y un rango [x0, x1),
+    // devuelve una lista de cajas "recortadas" al rango con mods de ruptura.
+    // Un nodo se incluye si su [bx, rx] se solapa con [x0, x1).
+    // Si el nodo cruza el borde izquierdo → mod 'nl'; cruza derecho → mod 'nr'; ambos → 'ne'.
+    function clipBoxes(boxes, x0, x1) {
+      const result = [];
+      for (const b of boxes) {
+        const bx = b.x, rx = b.x + b.w;
+        // sin solapamiento: saltar
+        if (rx <= x0 || bx >= x1) continue;
+
+        const n = b.n;
+        if (n.word || n.supFloat || n.subFloat || n.space || n.fmt) {
+          // hoja: siempre la incluimos si solapa
+          result.push({ ...b, x: b.x - x0 });
+          continue;
+        }
+
+        // nodo compuesto: recortar hijos recursivamente
+        const clippedCh = b.ch ? clipBoxes(b.ch, x0, x1) : [];
+
+        // determinar mod de ruptura para este nodo en este renglón
+        const crossLeft = bx < x0;   // el nodo viene del renglón anterior
+        const crossRight = rx > x1;   // el nodo continúa en el siguiente renglón
+        let breakMod = n.mod || null;
+        if (crossLeft && crossRight) breakMod = 'ne';
+        else if (crossLeft) breakMod = 'nl';
+        else if (crossRight) breakMod = 'nr';
+
+        // recalcular bx/w basándonos en los hijos clipeados
+        if (clippedCh.length === 0) continue;
+        const newBx = Math.min(...clippedCh.map(c => c.x));
+        const newRx = Math.max(...clippedCh.map(c => c.x + c.w));
+
+        result.push({
+          x: newBx,
+          w: newRx - newBx,
+          n: { ...n, mod: breakMod },
+          ch: clippedCh
+        });
+      }
+      return result;
+    }
+
+    // Dado el árbol de cajas completo, devuelve un array de renglones.
+    // Cada renglón es un array de cajas ya recortadas y re-offset a x=0.
+    function computeLines(allBoxes) {
+      if (allBoxes.length === 0) return [[]];
+
+      // Encontrar los puntos de corte usando las hojas
+      const leaves = findLeaves(allBoxes);
+      if (leaves.length === 0) return [allBoxes];
+
+      const totalW = allBoxes[allBoxes.length - 1].x + allBoxes[allBoxes.length - 1].w;
+      if (totalW <= MAX_LINE_W) return [allBoxes];
+
+      // Construir lista de puntos de corte
+      // Cortar después de la última hoja que termina antes de x0 + MAX_LINE_W
+      const cuts = []; // [x_inicio, x_fin) de cada renglón
+      let x0 = 0;
+      while (x0 < totalW) {
+        const x1 = x0 + MAX_LINE_W;
+        // encontrar la última hoja que termina dentro del renglón
+        let cutX = x1;
+        // buscar el mejor punto de corte: borde derecho de la última hoja ≤ x1
+        let lastLeafEnd = x0;
+        for (const l of leaves) {
+          const lend = l.x + l.w;
+          if (lend <= x1 && lend > lastLeafEnd) lastLeafEnd = lend;
+        }
+        // si no hay ninguna hoja que quepa, forzamos corte en la primera hoja siguiente
+        if (lastLeafEnd === x0) {
+          // primera hoja que empieza en o después de x0
+          const next = leaves.find(l => l.x >= x0);
+          if (next) lastLeafEnd = next.x + next.w;
+          else break;
+        }
+        cuts.push([x0, lastLeafEnd]);
+        x0 = lastLeafEnd;
+      }
+      if (x0 < totalW) cuts.push([x0, totalW]);
+
+      return cuts.map(([cx0, cx1]) => clipBoxes(allBoxes, cx0, cx1));
+    }
+
+    function renderSVG(src) {
+      ASCENT = FONT_SIZE * 0.78;
+      DESCENT = FONT_SIZE * 0.25;
+      const nodes = parse(src);
+
+      // Layout completo en una sola línea primero
+      const { boxes: allBoxes } = layout(nodes, 0);
+
+      // ¿Necesita partirse?
+      const totalW = allBoxes.length
+        ? allBoxes[allBoxes.length - 1].x + allBoxes[allBoxes.length - 1].w
+        : 0;
+
+      const isDark = false;
+      const fg = '#1a1a1a';
+      const bg = 'white';
+      const fontFam = currentFont();
+
+      const defs = `<defs>
   <marker id="arr" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
-    <polygon points="0 0, 7 2.5, 0 5" fill="${fgLine}"/>
+    <polygon points="0 0, 7 2.5, 0 5" fill="${fg}"/>
   </marker>
   <marker id="arrl" markerWidth="7" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
-    <polygon points="0 0, 7 2.5, 0 5" fill="${fgLine}"/>
+    <polygon points="0 0, 7 2.5, 0 5" fill="${fg}"/>
   </marker>
 </defs>
 <style>
@@ -1114,288 +1450,286 @@ function renderSVG(src) {
   .lbl { font-size: 11px; font-family: system-ui, sans-serif; font-variant: small-caps; letter-spacing: .05em; }
 </style>`;
 
-  // Renderizar un conjunto de cajas (un renglón) a un offset Y dado.
-  // Las cajas ya vienen con x re-offset a 0 y mods de ruptura en n.mod.
-  function renderLine(lineBoxes, byOffset, elT, elP) {
+      // Renderizar un conjunto de cajas (un renglón) a un offset Y dado.
+      // Las cajas ya vienen con x re-offset a 0 y mods de ruptura en n.mod.
+      function renderLine(lineBoxes, byOffset, elT, elP) {
+        const ln = (x1, y1, x2, y2, w = ULW) =>
+          elP.push(`<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="${fg}" stroke-width="${w}"/>`);
 
-    function draw(b, by) {
-      const n = b.n;
-      const mod = n.mod || null;
-      const bx = b.x + PAD, bw = b.w, rx = bx + bw, cx = bx + bw/2;
-      // color efectivo: individual → global de líneas
-      const nc = n.clr ? (resolveColor(n.clr) || fgLine) : fgLine;
-      const ln = (x1,y1,x2,y2,w=ULW) =>
-        elP.push(`<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="${nc}" stroke-width="${w}"/>`);
+        function draw(b, by) {
+          const n = b.n;
+          const mod = n.mod || null;
+          const bx = b.x + PAD, bw = b.w, rx = bx + bw, cx = bx + bw / 2;
 
-      if (n.supFloat || n.subFloat) {
-        const txt = n.supFloat || n.subFloat;
-        const fs  = Math.round(FONT_SIZE * SUP_RATIO);
-        const dy  = n.supFloat ? -(FONT_SIZE * SUP_SHIFT) : (FONT_SIZE * SUB_SHIFT);
-        elT.push(`<text class="sup" x="${f(bx)}" y="${f(by + dy)}" font-size="${fs}">${esc(txt)}</text>`);
-        return;
-      }
+          if (n.supFloat || n.subFloat) {
+            const txt = n.supFloat || n.subFloat;
+            const fs = Math.round(FONT_SIZE * SUP_RATIO);
+            const dy = n.supFloat ? -(FONT_SIZE * SUP_SHIFT) : (FONT_SIZE * SUB_SHIFT);
+            elT.push(`<text class="sup" x="${f(bx)}" y="${f(by + dy)}" font-size="${fs}">${esc(txt)}</text>`);
+            return;
+          }
 
-      if (n.word || n.fmt) {
-        const txt = n.word ?? n.text;
-        let fontStyle = '', fontWeight = '', extra = '';
-        if (n.fmt === 'i') fontStyle = ' font-style="italic"';
-        if (n.fmt === 'b') fontWeight = ' font-weight="bold"';
-        const bold = n.fmt === 'b';
-        if (n.fmt === 'u') extra = `<line x1="${f(bx)}" y1="${f(by+2)}" x2="${f(bx + measureWord(txt, false))}" y2="${f(by+2)}" stroke="${fg}" stroke-width="1"/>`;
-        if (n.fmt === 's') extra = `<line x1="${f(bx)}" y1="${f(by - FONT_SIZE*0.3)}" x2="${f(bx + measureWord(txt, false))}" y2="${f(by - FONT_SIZE*0.3)}" stroke="${fg}" stroke-width="1"/>`;
-        elT.push(`<text class="w" x="${f(bx)}" y="${f(by)}"${fontStyle}${fontWeight}>${esc(txt)}</text>`);
-        if (extra) elP.push(extra);
-        let px = bx + measureWord(txt, bold);
-        const fs = Math.round(FONT_SIZE * SUP_RATIO);
-        if (n.sup) for (const s of n.sup) {
-          elT.push(`<text class="sup" x="${f(px)}" y="${f(by - FONT_SIZE * SUP_SHIFT)}" font-size="${fs}">${esc(s)}</text>`);
-          px += measureSup(s);
+          if (n.word || n.fmt) {
+            const txt = n.word ?? n.text;
+            // Atributos de fuente según formato
+            let fontStyle = '', fontWeight = '', extra = '';
+            if (n.fmt === 'i') fontStyle = ' font-style="italic"';
+            if (n.fmt === 'b') fontWeight = ' font-weight="bold"';
+            const bold = n.fmt === 'b';
+            if (n.fmt === 'u') extra = `<line x1="${f(bx)}" y1="${f(by + 2)}" x2="${f(bx + measureWord(txt, false))}" y2="${f(by + 2)}" stroke="${fg}" stroke-width="1"/>`;
+            if (n.fmt === 's') extra = `<line x1="${f(bx)}" y1="${f(by - FONT_SIZE * 0.3)}" x2="${f(bx + measureWord(txt, false))}" y2="${f(by - FONT_SIZE * 0.3)}" stroke="${fg}" stroke-width="1"/>`;
+            elT.push(`<text class="w" x="${f(bx)}" y="${f(by)}"${fontStyle}${fontWeight}>${esc(txt)}</text>`);
+            if (extra) elP.push(extra);
+            let px = bx + measureWord(txt, bold);
+            const fs = Math.round(FONT_SIZE * SUP_RATIO);
+            if (n.sup) for (const s of n.sup) {
+              elT.push(`<text class="sup" x="${f(px)}" y="${f(by - FONT_SIZE * SUP_SHIFT)}" font-size="${fs}">${esc(s)}</text>`);
+              px += measureSup(s);
+            }
+            if (n.sub) for (const s of n.sub) {
+              elT.push(`<text class="sup" x="${f(px)}" y="${f(by + FONT_SIZE * SUB_SHIFT)}" font-size="${fs}">${esc(s)}</text>`);
+              px += measureSup(s);
+            }
+            return;
+          }
+
+          if (b.ch) for (const c of b.ch) draw(c, by);
+
+          if (n.kind === 'spanline') {
+            const row = rowAbove(n);
+            const pataY = by - ASCENT - SL_GAP;
+            const ly = pataY - SL_PATA_H - row * (SL_PATA_H + SL_STEP);
+            const lx = bx - SL_XPAD;
+            const rr = rx + SL_XPAD;
+            const leftEnd = mod !== 'l' && mod !== 'rl' && mod !== 'ne' && mod !== 'nl';
+            const rightEnd = mod !== 'r' && mod !== 'rl' && mod !== 'ne' && mod !== 'nr';
+            const leftArr = mod === 'l' || mod === 'rl';
+            const rightArr = mod === 'r' || mod === 'rl';
+            elP.push(`<line x1="${f(lx)}" y1="${f(ly)}" x2="${f(rr)}" y2="${f(ly)}" stroke="${fg}" stroke-width="${LW}" marker-end="${rightArr ? 'url(#arr)' : 'none'}" marker-start="${leftArr ? 'url(#arrl)' : 'none'}"/>`);
+            if (leftEnd) elP.push(`<line x1="${f(lx)}" y1="${f(pataY)}" x2="${f(lx)}" y2="${f(ly)}" stroke="${fg}" stroke-width="${LW}"/>`);
+            if (rightEnd) elP.push(`<line x1="${f(rr)}" y1="${f(pataY)}" x2="${f(rr)}" y2="${f(ly)}" stroke="${fg}" stroke-width="${LW}"/>`);
+            elP.push(`<text class="lbl" x="${f(cx)}" y="${f(ly - SL_LBL_GAP - 2)}" text-anchor="middle">${esc(n.label)}</text>`);
+
+          } else if (n.kind === 'openbox') {
+            const pataY = by + DESCENT;
+            const ly = lineYofBox(n, by);
+            const lx = bx - OB_XPAD;
+            const rr = rx + OB_XPAD;
+            const leftEnd = mod !== 'l' && mod !== 'rl' && mod !== 'ne' && mod !== 'nl';
+            const rightEnd = mod !== 'r' && mod !== 'rl' && mod !== 'ne' && mod !== 'nr';
+            const leftArr = mod === 'l' || mod === 'rl';
+            const rightArr = mod === 'r' || mod === 'rl';
+            elP.push(`<line x1="${f(lx)}" y1="${f(ly)}" x2="${f(rr)}" y2="${f(ly)}" stroke="${fg}" stroke-width="${LW}" marker-end="${rightArr ? 'url(#arr)' : 'none'}" marker-start="${leftArr ? 'url(#arrl)' : 'none'}"/>`);
+            if (leftEnd) elP.push(`<line x1="${f(lx)}" y1="${f(pataY)}" x2="${f(lx)}" y2="${f(ly)}" stroke="${fg}" stroke-width="${LW}"/>`);
+            if (rightEnd) elP.push(`<line x1="${f(rr)}" y1="${f(pataY)}" x2="${f(rr)}" y2="${f(ly)}" stroke="${fg}" stroke-width="${LW}"/>`);
+            elP.push(`<text class="lbl" x="${f(cx)}" y="${f(ly + LBGAP + LBH - 2)}" text-anchor="middle">${esc(n.label)}</text>`);
+
+          } else if (n.kind === 'tagbelow') {
+            const row = rowBelow(n);
+            const ty = by + DESCENT + PATA_TAG + row * (PATA_TAG + STEP_TAG) + LBH;
+            elP.push(`<text class="lbl" x="${f(cx)}" y="${f(ty)}" text-anchor="middle">${esc(n.label)}</text>`);
+            if (n.ul) ln(bx, by + DESCENT, rx, by + DESCENT);
+          }
         }
-        if (n.sub) for (const s of n.sub) {
-          elT.push(`<text class="sup" x="${f(px)}" y="${f(by + FONT_SIZE * SUB_SHIFT)}" font-size="${fs}">${esc(s)}</text>`);
-          px += measureSup(s);
-        }
-        return;
+
+        for (const b of lineBoxes) draw(b, byOffset);
       }
 
-      if (b.ch) for (const c of b.ch) draw(c, by);
-
-      if (n.kind === 'spanline') {
-        const row   = rowAbove(n);
-        const pataY = by - ASCENT - SL_GAP;
-        const ly    = pataY - SL_PATA_H - row*(SL_PATA_H + SL_STEP);
-        const lx    = bx - SL_XPAD;
-        const rr    = rx + SL_XPAD;
-        const leftEnd  = mod !== 'l' && mod !== 'rl' && mod !== 'ne' && mod !== 'nl';
-        const rightEnd = mod !== 'r' && mod !== 'rl' && mod !== 'ne' && mod !== 'nr';
-        const leftArr  = mod === 'l' || mod === 'rl';
-        const rightArr = mod === 'r' || mod === 'rl';
-        elP.push(`<line x1="${f(lx)}" y1="${f(ly)}" x2="${f(rr)}" y2="${f(ly)}" stroke="${nc}" stroke-width="${LW}" marker-end="${rightArr ? 'url(#arr)' : 'none'}" marker-start="${leftArr ? 'url(#arrl)' : 'none'}"/>`);
-        if (leftEnd)  elP.push(`<line x1="${f(lx)}" y1="${f(pataY)}" x2="${f(lx)}" y2="${f(ly)}" stroke="${nc}" stroke-width="${LW}"/>`);
-        if (rightEnd) elP.push(`<line x1="${f(rr)}" y1="${f(pataY)}" x2="${f(rr)}" y2="${f(ly)}" stroke="${nc}" stroke-width="${LW}"/>`);
-        elP.push(`<text class="lbl" x="${f(cx)}" y="${f(ly - SL_LBL_GAP - 2)}" text-anchor="middle" fill="${nc}">${esc(n.label)}</text>`);
-
-      } else if (n.kind === 'openbox') {
-        const pataY = by + DESCENT;
-        const ly    = lineYofBox(n, by);
-        const lx    = bx - OB_XPAD;
-        const rr    = rx + OB_XPAD;
-        const leftEnd  = mod !== 'l' && mod !== 'rl' && mod !== 'ne' && mod !== 'nl';
-        const rightEnd = mod !== 'r' && mod !== 'rl' && mod !== 'ne' && mod !== 'nr';
-        const leftArr  = mod === 'l' || mod === 'rl';
-        const rightArr = mod === 'r' || mod === 'rl';
-        elP.push(`<line x1="${f(lx)}" y1="${f(ly)}" x2="${f(rr)}" y2="${f(ly)}" stroke="${nc}" stroke-width="${LW}" marker-end="${rightArr ? 'url(#arr)' : 'none'}" marker-start="${leftArr ? 'url(#arrl)' : 'none'}"/>`);
-        if (leftEnd)  elP.push(`<line x1="${f(lx)}" y1="${f(pataY)}" x2="${f(lx)}" y2="${f(ly)}" stroke="${nc}" stroke-width="${LW}"/>`);
-        if (rightEnd) elP.push(`<line x1="${f(rr)}" y1="${f(pataY)}" x2="${f(rr)}" y2="${f(ly)}" stroke="${nc}" stroke-width="${LW}"/>`);
-        elP.push(`<text class="lbl" x="${f(cx)}" y="${f(ly + LBGAP + LBH - 2)}" text-anchor="middle" fill="${nc}">${esc(n.label)}</text>`);
-
-      } else if (n.kind === 'tagbelow') {
-        const row = rowBelow(n);
-        const ty  = by + DESCENT + PATA_TAG + row*(PATA_TAG + STEP_TAG) + LBH;
-        elP.push(`<text class="lbl" x="${f(cx)}" y="${f(ty)}" text-anchor="middle" fill="${nc}">${esc(n.label)}</text>`);
-        if (n.ul) ln(bx, by + DESCENT, rx, by + DESCENT);
+      // Calcular altura de un renglón
+      function lineHeightFor(lineBoxes) {
+        const ns = lineBoxes.map(b => b.n);
+        const slM = maxDA(ns);
+        const TY = PTOP + slM * (SL_PATA_H + SL_STEP) + LBH + SL_LBL_GAP + SL_GAP + 8;
+        const yM = maxYBelow(ns, TY);
+        const bel = Math.max(yM - TY - FONT_SIZE * 0.25, 0) + PBOT + 8;
+        return { TY, H: TY + FONT_SIZE * 0.75 + bel };
       }
-    }
 
-    for (const b of lineBoxes) draw(b, byOffset);
-  }
-
-  // Calcular altura de un renglón
-  function lineHeightFor(lineBoxes) {
-    const ns = lineBoxes.map(b => b.n);
-    const slM = maxDA(ns);
-    const TY  = PTOP + slM*(SL_PATA_H+SL_STEP) + LBH + SL_LBL_GAP + SL_GAP + 8;
-    const yM  = maxYBelow(ns, TY);
-    const bel = Math.max(yM - TY - FONT_SIZE*0.25, 0) + PBOT + 8;
-    return {TY, H: TY + FONT_SIZE*0.75 + bel};
-  }
-
-  // Caso simple: todo en un solo renglón
-  if (totalW <= MAX_LINE_W) {
-    const {TY, H} = lineHeightFor(allBoxes);
-    const W = (totalW > 0 ? totalW + PAD*2 : PAD*2);
-    const elT = [], elP = [];
-    renderLine(allBoxes, TY, elT, elP);
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}" height="${f(H)}" viewBox="0 0 ${f(W)} ${f(H)}">${defs}
+      // Caso simple: todo en un solo renglón
+      if (totalW <= MAX_LINE_W) {
+        const { TY, H } = lineHeightFor(allBoxes);
+        const W = (totalW > 0 ? totalW + PAD * 2 : PAD * 2);
+        const elT = [], elP = [];
+        renderLine(allBoxes, TY, elT, elP);
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}" height="${f(H)}" viewBox="0 0 ${f(W)} ${f(H)}">${defs}
 <rect width="${f(W)}" height="${f(H)}" fill="${bg}"/>
 ${elT.join('\n')}
 ${elP.join('\n')}
 </svg>`;
-  }
+      }
 
-  // Múltiples renglones
-  const lines = computeLines(allBoxes);
-  const svgLines = lines.map(lb => ({lb, ...lineHeightFor(lb)}));
-  const totalH = svgLines.reduce((a, l) => a + l.H, 0);
-  const W = MAX_LINE_W + PAD*2;
-  const allElT = [], allElP = [];
-  let yOff = 0;
-  for (const {lb, TY, H} of svgLines) {
-    const elT = [], elP = [];
-    renderLine(lb, TY + yOff, elT, elP);
-    allElT.push(...elT);
-    allElP.push(...elP);
-    if (yOff + H < totalH)
-      allElP.push(`<line x1="${f(PAD*0.5)}" y1="${f(yOff+H-PBOT*0.3)}" x2="${f(W-PAD*0.5)}" y2="${f(yOff+H-PBOT*0.3)}" stroke="${fg}" stroke-width="0.3" stroke-dasharray="4 4" opacity="0.3"/>`);
-    yOff += H;
-  }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}" height="${f(totalH)}" viewBox="0 0 ${f(W)} ${f(totalH)}">${defs}
+      // Múltiples renglones
+      const lines = computeLines(allBoxes);
+      const svgLines = lines.map(lb => ({ lb, ...lineHeightFor(lb) }));
+      const totalH = svgLines.reduce((a, l) => a + l.H, 0);
+      const W = MAX_LINE_W + PAD * 2;
+      const allElT = [], allElP = [];
+      let yOff = 0;
+      for (const { lb, TY, H } of svgLines) {
+        const elT = [], elP = [];
+        renderLine(lb, TY + yOff, elT, elP);
+        allElT.push(...elT);
+        allElP.push(...elP);
+        if (yOff + H < totalH)
+          allElP.push(`<line x1="${f(PAD * 0.5)}" y1="${f(yOff + H - PBOT * 0.3)}" x2="${f(W - PAD * 0.5)}" y2="${f(yOff + H - PBOT * 0.3)}" stroke="${fg}" stroke-width="0.3" stroke-dasharray="4 4" opacity="0.3"/>`);
+        yOff += H;
+      }
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}" height="${f(totalH)}" viewBox="0 0 ${f(W)} ${f(totalH)}">${defs}
 <rect width="${f(W)}" height="${f(totalH)}" fill="${bg}"/>
 ${allElT.join('\n')}
 ${allElP.join('\n')}
 </svg>`;
-}
-
-// ── Utilidades ────────────────────────────────────────────────────────────────
-const f   = n => n.toFixed(1);
-const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
-function update() {
-  const src  = document.getElementById('src').value.trim();
-  const err  = document.getElementById('err');
-  const prev = document.getElementById('preview');
-  if (!src) { prev.innerHTML = ''; return; }
-  try {
-    prev.innerHTML = renderSVG(src);
-    err.style.display = 'none';
-  } catch(e) {
-    err.textContent = 'Error: ' + e.message;
-    err.style.display = 'block';
-  }
-}
-
-function ins(txt) {
-  const ta = document.getElementById('src');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  ta.value = ta.value.slice(0, s) + txt + ta.value.slice(e);
-  ta.selectionStart = ta.selectionEnd = s + txt.length;
-  ta.focus(); update();
-}
-
-// Inserta ^{ST …}[ con el cursor posicionado sobre el placeholder …
-function insST() {
-  const ta = document.getElementById('src');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const txt = '^{ST …}[';
-  ta.value = ta.value.slice(0, s) + txt + ta.value.slice(e);
-  // seleccionar el … (posición 5, longitud 1)
-  ta.selectionStart = s + 5;
-  ta.selectionEnd   = s + 6;
-  ta.focus(); update();
-}
-// o inserta ^{…} / _{…} flotante posicionando el cursor dentro de las llaves.
-function insIndex(type) {
-  const ta = document.getElementById('src');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.slice(s, e);
-  if (sel.length > 0) {
-    const ins = `${type}{${sel}}`;
-    ta.value = ta.value.slice(0, s) + ins + ta.value.slice(e);
-    ta.selectionStart = ta.selectionEnd = s + ins.length;
-  } else {
-    const ins = `${type}{…}`;
-    ta.value = ta.value.slice(0, s) + ins + ta.value.slice(e);
-    ta.selectionStart = s + 2;
-    ta.selectionEnd   = s + 3;
-  }
-  ta.focus(); update();
-}
-
-// Inserta combinación de dos formatos: \outer{\inner{texto}}
-function insFmtCombo(outer, inner) {
-  const ta = document.getElementById('src');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.slice(s, e);
-  const core = sel.length ? sel : '…';
-  const snippet = `\\${outer}{\\${inner}{${core}}}`;
-  ta.value = ta.value.slice(0, s) + snippet + ta.value.slice(e);
-  if (sel.length) {
-    ta.selectionStart = s; ta.selectionEnd = s + snippet.length;
-  } else {
-    // cursor sobre el …: está en posición s+7 (\\x{\\y{…)
-    ta.selectionStart = s + 7; ta.selectionEnd = s + 8;
-  }
-  ta.focus(); update();
-}
-function insFmt(type) {
-  const ta = document.getElementById('src');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.slice(s, e);
-  const inner = sel.length ? sel : '…';
-  const snippet = `\\${type}{${inner}}`;
-  ta.value = ta.value.slice(0, s) + snippet + ta.value.slice(e);
-  if (sel.length) {
-    ta.selectionStart = s; ta.selectionEnd = s + snippet.length;
-  } else {
-    ta.selectionStart = s + 4; ta.selectionEnd = s + 5; // sobre el …
-  }
-  ta.focus(); update();
-}
-
-function getSVG() { return renderSVG(document.getElementById('src').value.trim()); }
-
-function dlSVG() {
-  const a = document.createElement('a');
-  a.href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(getSVG());
-  a.download = 'analisis.svg'; a.click();
-}
-
-function dlPNG() {
-  const svg = getSVG();
-  const url = URL.createObjectURL(new Blob([svg], {type:'image/svg+xml'}));
-  const img = new Image();
-  img.onload = () => {
-    const c = document.createElement('canvas');
-    c.width = img.width * 2; c.height = img.height * 2;
-    const ctx = c.getContext('2d'); ctx.scale(2, 2); ctx.drawImage(img, 0, 0);
-    URL.revokeObjectURL(url);
-    const a = document.createElement('a');
-    a.href = c.toDataURL('image/png'); a.download = 'analisis.png'; a.click();
-  };
-  img.src = url;
-}
-
-function copySVG() {
-  navigator.clipboard.writeText(getSVG()).then(() => {
-    const b = event.currentTarget, orig = b.textContent;
-    b.textContent = '✓ Copiado';
-    setTimeout(() => b.textContent = orig, 1500);
-  });
-}
-
-document.getElementById('src').addEventListener('input', update);
-
-// Auto-cierre de delimitadores
-const PAIRS = {'(':')', '[':']', '{':'}', '⟨':'⟩'};
-document.getElementById('src').addEventListener('keydown', e => {
-  const ta = e.target;
-  const close = PAIRS[e.key];
-  if (close) {
-    e.preventDefault();
-    const s = ta.selectionStart, en = ta.selectionEnd;
-    const sel = ta.value.slice(s, en);
-    // Si hay selección, la envuelve; si no, inserta par con cursor entre ellos
-    const ins = sel.length ? `${e.key}${sel}${close}` : `${e.key}${close}`;
-    ta.value = ta.value.slice(0, s) + ins + ta.value.slice(en);
-    // cursor: después del abriente si no hay selección, después del cierre si la hay
-    const cur = sel.length ? s + ins.length : s + 1;
-    ta.selectionStart = ta.selectionEnd = cur;
-    update();
-  }
-  // Si el usuario tipea el carácter de cierre sobre él mismo, lo salta sin duplicar
-  if (Object.values(PAIRS).includes(e.key)) {
-    const s = ta.selectionStart;
-    if (ta.value[s] === e.key) {
-      e.preventDefault();
-      ta.selectionStart = ta.selectionEnd = s + 1;
     }
-  }
-});
-document.getElementById('year').textContent = new Date().getFullYear();
-loadCustomTags();
-initColorPickers();
-update();
-</script>
-</body>
-</html>
 
+    // ── Utilidades ────────────────────────────────────────────────────────────────
+    const f = n => n.toFixed(1);
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    function update() {
+      const src = document.getElementById('src').value.trim();
+      const err = document.getElementById('err');
+      const prev = document.getElementById('preview');
+      if (!src) { prev.innerHTML = ''; return; }
+      try {
+        prev.innerHTML = renderSVG(src);
+        err.style.display = 'none';
+      } catch (e) {
+        err.textContent = 'Error: ' + e.message;
+        err.style.display = 'block';
+      }
+    }
+
+    function ins(txt) {
+      const ta = document.getElementById('src');
+      const s = ta.selectionStart, e = ta.selectionEnd;
+      ta.value = ta.value.slice(0, s) + txt + ta.value.slice(e);
+      ta.selectionStart = ta.selectionEnd = s + txt.length;
+      ta.focus(); update();
+    }
+
+    // Inserta ^{ST …}[ con el cursor posicionado sobre el placeholder …
+    function insST() {
+      const ta = document.getElementById('src');
+      const s = ta.selectionStart, e = ta.selectionEnd;
+      const txt = '^{ST …}[';
+      ta.value = ta.value.slice(0, s) + txt + ta.value.slice(e);
+      // seleccionar el … (posición 5, longitud 1)
+      ta.selectionStart = s + 5;
+      ta.selectionEnd = s + 6;
+      ta.focus(); update();
+    }
+    // o inserta ^{…} / _{…} flotante posicionando el cursor dentro de las llaves.
+    function insIndex(type) {
+      const ta = document.getElementById('src');
+      const s = ta.selectionStart, e = ta.selectionEnd;
+      const sel = ta.value.slice(s, e);
+      if (sel.length > 0) {
+        const ins = `${type}{${sel}}`;
+        ta.value = ta.value.slice(0, s) + ins + ta.value.slice(e);
+        ta.selectionStart = ta.selectionEnd = s + ins.length;
+      } else {
+        const ins = `${type}{…}`;
+        ta.value = ta.value.slice(0, s) + ins + ta.value.slice(e);
+        ta.selectionStart = s + 2;
+        ta.selectionEnd = s + 3;
+      }
+      ta.focus(); update();
+    }
+
+    // Inserta combinación de dos formatos: \outer{\inner{texto}}
+    function insFmtCombo(outer, inner) {
+      const ta = document.getElementById('src');
+      const s = ta.selectionStart, e = ta.selectionEnd;
+      const sel = ta.value.slice(s, e);
+      const core = sel.length ? sel : '…';
+      const snippet = `\\${outer}{\\${inner}{${core}}}`;
+      ta.value = ta.value.slice(0, s) + snippet + ta.value.slice(e);
+      if (sel.length) {
+        ta.selectionStart = s; ta.selectionEnd = s + snippet.length;
+      } else {
+        // cursor sobre el …: está en posición s+7 (\\x{\\y{…)
+        ta.selectionStart = s + 7; ta.selectionEnd = s + 8;
+      }
+      ta.focus(); update();
+    }
+    function insFmt(type) {
+      const ta = document.getElementById('src');
+      const s = ta.selectionStart, e = ta.selectionEnd;
+      const sel = ta.value.slice(s, e);
+      const inner = sel.length ? sel : '…';
+      const snippet = `\\${type}{${inner}}`;
+      ta.value = ta.value.slice(0, s) + snippet + ta.value.slice(e);
+      if (sel.length) {
+        ta.selectionStart = s; ta.selectionEnd = s + snippet.length;
+      } else {
+        ta.selectionStart = s + 4; ta.selectionEnd = s + 5; // sobre el …
+      }
+      ta.focus(); update();
+    }
+
+    function getSVG() { return renderSVG(document.getElementById('src').value.trim()); }
+
+    function dlSVG() {
+      const a = document.createElement('a');
+      a.href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(getSVG());
+      a.download = 'analisis.svg'; a.click();
+    }
+
+    function dlPNG() {
+      const svg = getSVG();
+      const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.width * 2; c.height = img.height * 2;
+        const ctx = c.getContext('2d'); ctx.scale(2, 2); ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        const a = document.createElement('a');
+        a.href = c.toDataURL('image/png'); a.download = 'analisis.png'; a.click();
+      };
+      img.src = url;
+    }
+
+    function copySVG() {
+      navigator.clipboard.writeText(getSVG()).then(() => {
+        const b = event.currentTarget, orig = b.textContent;
+        b.textContent = '✓ Copiado';
+        setTimeout(() => b.textContent = orig, 1500);
+      });
+    }
+
+    document.getElementById('src').addEventListener('input', update);
+
+    // Auto-cierre de delimitadores
+    const PAIRS = { '(': ')', '[': ']', '{': '}', '⟨': '⟩' };
+    document.getElementById('src').addEventListener('keydown', e => {
+      const ta = e.target;
+      const close = PAIRS[e.key];
+      if (close) {
+        e.preventDefault();
+        const s = ta.selectionStart, en = ta.selectionEnd;
+        const sel = ta.value.slice(s, en);
+        // Si hay selección, la envuelve; si no, inserta par con cursor entre ellos
+        const ins = sel.length ? `${e.key}${sel}${close}` : `${e.key}${close}`;
+        ta.value = ta.value.slice(0, s) + ins + ta.value.slice(en);
+        // cursor: después del abriente si no hay selección, después del cierre si la hay
+        const cur = sel.length ? s + ins.length : s + 1;
+        ta.selectionStart = ta.selectionEnd = cur;
+        update();
+      }
+      // Si el usuario tipea el carácter de cierre sobre él mismo, lo salta sin duplicar
+      if (Object.values(PAIRS).includes(e.key)) {
+        const s = ta.selectionStart;
+        if (ta.value[s] === e.key) {
+          e.preventDefault();
+          ta.selectionStart = ta.selectionEnd = s + 1;
+        }
+      }
+    });
+    document.getElementById('year').textContent = new Date().getFullYear();
+    loadCustomTags();
+    update();
+  </script>
+</body>
+
+</html>
