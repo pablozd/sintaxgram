@@ -12,10 +12,10 @@ Está pensada para uso docente en gramática, sintaxis y análisis de oraciones.
 
 → **[sintaxgram.pablozd.ar](https://sintaxgram.pablozd.ar)**
 
-## Captura
+## Demo
 
 <p align="center">
-  <img src="docs/sintaxgram-captura.png" alt="Captura de Sintaxgram" width="980">
+  <img src="docs/sintaxgram-demo.gif" alt="Captura de Sintaxgram" width="980">
 </p>
 
 ## Características
