@@ -15,7 +15,7 @@ Está pensada para uso docente en gramática, sintaxis y análisis de oraciones.
 ## Demo
 
 <p align="center">
-  <img src="docs/sintaxgram-demo.gif" alt="Captura de Sintaxgram" width="980">
+  <img src="img/sintaxgram-demo.gif" alt="Demo" width="980">
 </p>
 
 ## Características
