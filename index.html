@@ -590,6 +590,38 @@
       color: var(--fg);
     }
   </style>
+
+<style>
+  .tutorial-btn{
+    margin-left:auto; display:inline-flex; align-items:center; gap:7px;
+    background:#2563b0; color:#fff; border:1px solid #2563b0;
+    border-radius:6px; padding:6px 14px; font:600 .85rem system-ui,sans-serif;
+    cursor:pointer; transition:filter .12s;
+  }
+  .tutorial-btn:hover{ filter:brightness(1.12); }
+  .tutorial-btn .dur{ font-weight:400; opacity:.75; font-size:.78rem; }
+  .tutorial-btn.pulse{ animation:tut-pulse 2.2s ease-out infinite; }
+  @keyframes tut-pulse{
+    0%{ box-shadow:0 0 0 0 rgba(26,110,224,.45); }
+    70%{ box-shadow:0 0 0 10px rgba(26,110,224,0); }
+    100%{ box-shadow:0 0 0 0 rgba(26,110,224,0); }
+  }
+  .tutorial-modal[hidden]{ display:none; }
+  .tutorial-modal{ position:fixed; inset:0; z-index:2000; display:flex;
+    align-items:center; justify-content:center; }
+  .tutorial-backdrop{ position:absolute; inset:0; background:rgba(15,20,30,.55); }
+  .tutorial-box{ position:relative; width:min(860px,92vw); background:#fff;
+    border-radius:10px; overflow:hidden; box-shadow:0 18px 50px rgba(0,0,0,.35); }
+  .tutorial-head{ display:flex; align-items:center; justify-content:space-between;
+    padding:10px 16px; font:600 .95rem system-ui,sans-serif; color:#222;
+    border-bottom:1px solid #e5e8ee; }
+  .tutorial-head button{ border:none; background:none; font-size:1.5rem;
+    line-height:1; cursor:pointer; color:#555; padding:2px 6px; }
+  .tutorial-frame{ aspect-ratio:16/9; background:#000; }
+  .tutorial-frame iframe{ width:100%; height:100%; border:0; display:block; }
+  .tutorial-foot{ padding:9px 16px; font:.82rem system-ui,sans-serif; }
+  .tutorial-foot a{ color:#2563b0; text-decoration:none; }
+</style>
 </head>
 
 <body>
@@ -601,6 +633,10 @@
   <header>
     <h1>Sintaxgram</h1>
     <span>Análisis sintáctico — sintaxismark v0.6.20</span>
+    <button id="tutorialBtn" class="tutorial-btn" type="button" onclick="openTutorial()">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+  Tutorial <span class="dur">1 min</span>
+</button>
   </header>
   <div class="app">
     <div class="toolbar">
@@ -1731,6 +1767,50 @@ ${allElP.join('\n')}
     loadCustomTags();
     update();
   </script>
+
+<div id="tutorialModal" class="tutorial-modal" hidden>
+  <div class="tutorial-backdrop" onclick="closeTutorial()"></div>
+  <div class="tutorial-box" role="dialog" aria-modal="true" aria-label="Tutorial de Sintaxgram">
+    <div class="tutorial-head">
+      <span>Cómo usar Sintaxgram, en 1 min</span>
+      <button type="button" onclick="closeTutorial()" aria-label="Cerrar">×</button>
+    </div>
+    <div class="tutorial-frame">
+      <iframe id="tutorialIframe"
+        data-src="https://www.youtube-nocookie.com/embed/VIDEO_ID_SINTAXGRAM?rel=0&autoplay=1"
+        title="Tutorial de Sintaxgram" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    </div>
+    <div class="tutorial-foot">
+      <a id="tutorialYtLink" href="https://youtu.be/VIDEO_ID_SINTAXGRAM" target="_blank" rel="noopener">Ver en YouTube ↗</a>
+    </div>
+  </div>
+</div>
+<script>
+  function openTutorial(){
+    const m = document.getElementById('tutorialModal');
+    const f = document.getElementById('tutorialIframe');
+    if (!f.src) f.src = f.dataset.src;
+    m.hidden = false;
+    document.getElementById('tutorialBtn').classList.remove('pulse');
+    try{ localStorage.setItem('tutorialSeen','1'); }catch(e){}
+  }
+  function closeTutorial(){
+    document.getElementById('tutorialModal').hidden = true;
+    document.getElementById('tutorialIframe').removeAttribute('src'); // corta la reproducción
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeTutorial();
+  });
+  // El botón queda oculto hasta que se configure un ID real de YouTube
+  if (document.getElementById('tutorialIframe').dataset.src.includes('VIDEO_ID_')) {
+    document.getElementById('tutorialBtn').style.display = 'none';
+  } else {
+    try{
+      if (!localStorage.getItem('tutorialSeen'))
+        document.getElementById('tutorialBtn').classList.add('pulse');
+    }catch(e){}
+  }
+</script>
 </body>
 
 </html>
